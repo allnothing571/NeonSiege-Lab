@@ -3,51 +3,82 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 class Entity {
 public:
-    Entity(const std::string& name, int hp)
-        // TODO 1：使用初始化列表初始化 name_ 和 hp_。
-    {
-    }
+	Entity(const std::string& name, int hp)
+		:name_(name), hp_(hp)
+	{
+	}
 
-    void takeDamage(int damage) {
-        // TODO 2：忽略非正数伤害，并保证 hp_ 不小于 0。
-    }
+	void takeDamage(int damage) {
+		if (damage <= 0) {
+			return;
+		}
 
-    bool isAlive() const {
-        // TODO 3：返回实体是否存活。
-        return false;
-    }
+		hp_ -= damage;
 
-    const std::string& name() const {
-        return name_;
-    }
+		if (hp_ < 0) {
+			hp_ = 0;
+		}
+	}
 
-    int hp() const {
-        return hp_;
-    }
+	bool isAlive() const {
+		return hp_ > 0;
+	}
+
+	const std::string& name() const {
+		return name_;
+	}
+
+	int hp() const {
+		return hp_;
+	}
 
 private:
-    std::string name_;
-    int hp_ = 0;
+	std::string name_;
+	int hp_ = 0;
 };
 
 int main() {
-    std::vector<Entity> entities;
+#ifdef _WIN32
+	SetConsoleOutputCP(CP_UTF8);
+	SetConsoleCP(CP_UTF8);
+#endif
 
-    // TODO 4：创建至少 3 个实体并加入 entities。
-    // TODO 5：使用引用遍历，让其中至少 1 个实体死亡。
-    // TODO 6：使用 erase-remove_if 删除死亡实体。
+	std::vector<Entity> entities;
 
-    std::ofstream output("day1_entities.txt");
-    if (!output) {
-        std::cerr << "无法创建 day1_entities.txt\n";
-        return 1;
-    }
+	entities.emplace_back("汪鸡", 9999);
+	entities.emplace_back("小付", 9999);
+	entities.emplace_back("鳄鱼", 1);
 
-    // TODO 7：把存活实体写入文件，并同步输出到控制台。
+	for (Entity& entity : entities) {
+		entity.takeDamage(10);
+	}
 
-    return 0;
+	auto newEnd = std::remove_if(
+		entities.begin(),
+		entities.end(),
+		[](const Entity& entity) {
+			return !entity.isAlive();
+		});
+
+	entities.erase(newEnd, entities.end());
+
+	std::ofstream output("day1_entities.txt");
+	if (!output) {
+		std::cerr << "无法创建 day1_entities.txt\n";
+		return 1;
+	}
+
+	for (const Entity& entity : entities) {
+		std::cout << entity.name() << ' ' << entity.hp() << '\n';
+		output << entity.name() << ' ' << entity.hp() << '\n';
+	}
+
+	return 0;
 }
 

@@ -22,6 +22,19 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(SDL2)
 
 add_executable(NeonSiege src/main.cpp)
+
+add_executable(
+    Day1EntityExercise
+    exercises/day1_entity_manager.cpp
+)
+
+if(MSVC)
+    target_compile_options(
+        Day1EntityExercise
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
 target_link_libraries(NeonSiege PRIVATE SDL2::SDL2-static)
 
 if(MSVC)
