@@ -4,6 +4,129 @@
 #include <string_view>
 #include <cmath>
 #include <algorithm>
+#include <vector>
+
+class Player {
+public:
+	Player(float x, float y, float size, float speed)
+		: x_(x), y_(y), size_(size), speed_(speed) {
+
+	}
+
+	void update(
+		float directionX,
+		float directionY,
+		float dt,
+		float windowWidth,
+		float windowHeight) {
+
+		if (y_ <= 0 && directionY < 0.0f) {
+			directionY = 0.0f;
+		}
+		if (y_ >= windowHeight - size_ && directionY > 0.0f) {
+			directionY = 0.0f;
+		}
+		if (x_ <= 0 && directionX < 0.0f) {
+			directionX = 0.0f;
+		}
+		if (x_ >= windowWidth - size_ && directionX > 0.0f) {
+			directionX = 0.0f;
+		}
+
+		const float directionLength =
+			std::sqrt(directionX * directionX + directionY * directionY);
+
+		if (directionLength > 0.0f) {
+			directionX /= directionLength;
+			directionY /= directionLength;
+		}
+
+		x_ += directionX * speed_ * dt;
+		y_ += directionY * speed_ * dt;
+
+		x_ = std::clamp(x_, 0.0f, windowHeight - size_);
+		y_ = std::clamp(y_, 0.0f, windowHeight - size_);
+	}
+
+	void render(SDL_Renderer* renderer) const {
+		SDL_FRect playerRect{
+			x_,
+			y_,
+			size_,
+			size_
+		};
+
+		SDL_SetRenderDrawColor(renderer, 0, 220, 255, 255);
+		SDL_RenderFillRectF(renderer, &playerRect);
+	}
+
+	float centerX() const {
+		return x_ + size_ / 2.0f;
+	}
+
+	float centerY() const {
+		return y_ + size_ / 2.0f;
+	}
+
+private:
+	float x_;
+	float y_;
+	float size_;
+	float speed_;
+};
+
+class Bullet {
+public:
+	Bullet(
+		float x,
+		float y,
+		float directionX,
+		float directionY,
+		float size,
+		float speed)
+		: x_(x),
+		y_(y),
+		directionX_(directionX),
+		directionY_(directionY),
+		size_(size),
+		speed_(speed) {
+	}
+
+	void update(float dt) {
+		x_ += directionX_ * speed_ * dt;
+		y_ += directionY_ * speed_ * dt;
+	}
+
+	bool isOutside(float windowWidth,
+		float windowHeight)const {
+
+		return
+			x_ + size_ < 0.0f ||
+			x_ > windowWidth ||
+			y_ + size_ < 0.0f ||
+			y_ > windowHeight;
+	}
+
+	void render(SDL_Renderer* renderer) const {
+		SDL_FRect bulletRect{
+			x_,
+			y_,
+			size_,
+			size_
+		};
+
+		SDL_SetRenderDrawColor(renderer, 255, 220, 80, 255);
+		SDL_RenderFillRectF(renderer, &bulletRect);
+	}
+
+private:
+	float x_;
+	float y_;
+	float directionX_;
+	float directionY_;
+	float size_;
+	float speed_;
+};
 
 int main(int argc, char* argv[]) {
 	const bool smokeTest = argc > 1 && std::string_view(argv[1]) == "--smoke-test";
@@ -16,7 +139,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	SDL_Window* window = SDL_CreateWindow(
-		"Neon Siege - Day 2",
+		"Neon Siege - Day 3",
 		SDL_WINDOWPOS_CENTERED,
 		SDL_WINDOWPOS_CENTERED,
 		960,
@@ -49,10 +172,9 @@ int main(int argc, char* argv[]) {
 		static_cast<double>(SDL_GetPerformanceFrequency());
 	Uint64 previousCounter = SDL_GetPerformanceCounter();
 
-	float playerX = 456.0f;
-	float playerY = 246.0f;
-	constexpr float playerSize = 48.0f;
-	constexpr float playerSpeed = 240.0f;
+	Player player(456.0f, 246.0f, 48.0f, 240.0f);
+
+	std::vector<Bullet> bullets;
 
 	constexpr double fixedDt = 1.0 / 60.0;
 	double accumulator = 0.0;
@@ -70,6 +192,8 @@ int main(int argc, char* argv[]) {
 		previousCounter = currentCounter;
 		accumulator += frameTime;
 
+		bool fireRequested = false;
+
 		SDL_Event event{};
 		while (SDL_PollEvent(&event) != 0) {
 			if (event.type == SDL_QUIT) {
@@ -77,6 +201,10 @@ int main(int argc, char* argv[]) {
 			}
 			if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) {
 				running = false;
+			}
+			if (event.type == SDL_MOUSEBUTTONDOWN &&
+				event.button.button == SDL_BUTTON_LEFT) {
+				fireRequested = true;
 			}
 		}
 
@@ -99,32 +227,25 @@ int main(int argc, char* argv[]) {
 				directionX += 1.0f;
 			}
 
-			if (playerY <= 0 && directionY < 0.0f) {
-				directionY = 0.0f;
-			}
-			if (playerY >= 540.0f - playerSize && directionY > 0.0f) {
-				directionY = 0.0f;
-			}
-			if (playerX <= 0 && directionX < 0.0f) {
-				directionX = 0.0f;
-			}
-			if (playerX >= 960.0f - playerSize && directionX > 0.0f) {
-				directionX = 0.0f;
+			player.update(
+				directionX,
+				directionY,
+				static_cast<float>(fixedDt),
+				960.0f,
+				540.0f);
+
+			for (Bullet& bullet : bullets) {
+				bullet.update(static_cast<float>(fixedDt));
 			}
 
-			const float directionLength =
-				std::sqrt(directionX * directionX + directionY * directionY);
-
-			if (directionLength > 0.0f) {
-				directionX /= directionLength;
-				directionY /= directionLength;
-			}
-
-			playerX += directionX * playerSpeed * static_cast<float>(fixedDt);
-			playerY += directionY * playerSpeed * static_cast<float>(fixedDt);
-
-			playerX = std::clamp(playerX, 0.0f, 960.0f - playerSize);
-			playerY = std::clamp(playerY, 0.0f, 540.0f - playerSize);
+			bullets.erase(
+				std::remove_if(
+					bullets.begin(),
+					bullets.end(),
+					[](const Bullet& bullet) {
+						return bullet.isOutside(960.0f, 540.0f);
+					}),
+				bullets.end());
 
 			accumulator -= fixedDt;
 		}
@@ -133,8 +254,8 @@ int main(int argc, char* argv[]) {
 		int mouseY = 0;
 		SDL_GetMouseState(&mouseX, &mouseY);
 
-		const float playerCenterX = playerX + playerSize / 2.0f;
-		const float playerCenterY = playerY + playerSize / 2.0f;
+		const float playerCenterX = player.centerX();
+		const float playerCenterY = player.centerY();
 
 		float aimX = static_cast<float>(mouseX) - playerCenterX;
 		float aimY = static_cast<float>(mouseY) - playerCenterY;
@@ -147,16 +268,26 @@ int main(int argc, char* argv[]) {
 			aimY /= aimLength;
 		}
 
+		if (fireRequested && aimLength > 0.0f) {
+			bullets.emplace_back(
+				playerCenterX,
+				playerCenterY,
+				aimX,
+				aimY,
+				8.0f,
+				600.0f);
+		}
+
 		SDL_SetRenderDrawColor(renderer, 18, 18, 18, 255);
 		SDL_RenderClear(renderer);
 
 		//绘制玩家
-		SDL_FRect playerRect{
-			playerX,
-			playerY,
-			playerSize,
-			playerSize
-		};
+		player.render(renderer);
+
+		//绘制子弹
+		for (const Bullet& bullet : bullets) {
+			bullet.render(renderer);
+		}
 
 		//朝向线绘制
 		constexpr float aimLineLength = 60.0f;
@@ -169,9 +300,6 @@ int main(int argc, char* argv[]) {
 			playerCenterX + aimX * aimLineLength,
 			playerCenterY + aimY * aimLineLength
 		);
-
-		SDL_SetRenderDrawColor(renderer, 0, 220, 255, 255);
-		SDL_RenderFillRectF(renderer, &playerRect);
 
 		SDL_RenderPresent(renderer);
 
