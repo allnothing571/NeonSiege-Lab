@@ -6,11 +6,12 @@
 #include <algorithm>
 #include <vector>
 #include <string>
+#include <fstream>
 
 class Player {
 public:
-	Player(float x, float y, float size, float speed)
-		: x_(x), y_(y), size_(size), speed_(speed) {
+	Player(float x, float y, float size, float speed, int health)
+		: x_(x), y_(y), size_(size), speed_(speed), health_(health) {
 
 	}
 
@@ -69,11 +70,53 @@ public:
 		return y_ + size_ / 2.0f;
 	}
 
+	void takeDamage(int damage) {
+		if (damage <= 0) {
+			return;
+		}
+
+		health_ -= damage;
+
+		if (health_ < 0) {
+			health_ = 0;
+		}
+	}
+
+	bool isAlive() const {
+		return health_ > 0;
+	}
+
+	void reset(float x, float y, int health) {
+		x_ = x;
+		y_ = y;
+		health_ = health;
+	}
+
+	int health() const {
+		return health_;
+	}
+
+	SDL_FRect bounds() const {
+		return SDL_FRect{ x_, y_, size_, size_ };
+	}
+
+	SDL_FRect hitbox() const {
+		const float inset = size_ * 0.2f;
+
+		return SDL_FRect{
+			x_ + inset,
+			y_ + inset,
+			size_ - inset * 2.0f,
+			size_ - inset * 2.0f
+		};
+	}
+
 private:
 	float x_;
 	float y_;
 	float size_;
 	float speed_;
+	int health_;
 };
 
 class Bullet {
@@ -154,10 +197,25 @@ public:
 
 	bool isAlive() const;
 
+	void defeat() {
+		hp_ = 0;
+	}
+
 	void render(SDL_Renderer* renderer) const;
 
 	SDL_FRect bounds() const {
 		return SDL_FRect{ x_,y_,size_,size_ };
+	}
+
+	SDL_FRect hitbox() const {
+		const float inset = size_ * 0.2f;
+
+		return SDL_FRect{
+			x_ + inset,
+			y_ + inset,
+			size_ - inset * 2.0f,
+			size_ - inset * 2.0f
+		};
 	}
 
 private:
@@ -166,6 +224,77 @@ private:
 	float size_;
 	float speed_;
 	int hp_;
+};
+
+enum class GameState {
+	Playing,
+	Paused,
+	Gameover
+};
+
+class WaveManager {
+public:
+	void reset() {
+		currentWave_ = 0;
+	}
+
+	void spawnNextWave(std::vector<Enemy>& enemies) {
+		++currentWave_;
+
+		const int enemyCount = currentWave_ + 2;
+
+		for (int i = 0; i < enemyCount; i++) {
+			const float x =
+				80.0f + static_cast<float>(i % 4) * 220.f;
+			const float y =
+				80.0f + static_cast<float>(i / 4) * 140.0f;
+			const float speed =
+				70.0f + static_cast<float>(i % 3) * 10.0f;
+
+			enemies.emplace_back(
+				x,
+				y,
+				32.0f,
+				speed,
+				30);
+		}
+	}
+
+	int currentWave() const {
+		return currentWave_;
+	}
+
+private:
+	int currentWave_ = 0;
+};
+
+class SaveData {
+public:
+	int loadHighScore(const std::string& path) const {
+		std::ifstream input(path);
+		int highScore = 0;
+
+		if (!input || !(input >> highScore) || highScore < 0) {
+			return 0;
+		}
+
+		return highScore;
+	}
+
+	bool saveHighScore(
+		const std::string& path,
+		int highScore) const {
+
+		std::ofstream output(path);
+
+		if (!output) {
+			return false;
+		}
+
+		output << highScore << '\n';
+		return static_cast<bool>(output);
+	}
+
 };
 
 void Enemy::update(float targetX, float targetY, float dt) {
@@ -234,7 +363,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	SDL_Window* window = SDL_CreateWindow(
-		"Neon Siege - Day 3",
+		"Neon Siege - Day 5",
 		SDL_WINDOWPOS_CENTERED,
 		SDL_WINDOWPOS_CENTERED,
 		960,
@@ -267,24 +396,30 @@ int main(int argc, char* argv[]) {
 		static_cast<double>(SDL_GetPerformanceFrequency());
 	Uint64 previousCounter = SDL_GetPerformanceCounter();
 
-	Player player(456.0f, 246.0f, 48.0f, 240.0f);
+	Player player(456.0f, 246.0f, 48.0f, 240.0f, 3);
 
 	//创建子弹
 	std::vector<Bullet> bullets;
 
 	//创建敌人
 	std::vector<Enemy> enemies;
-	enemies.emplace_back(100.0f, 100.0f, 32.0f, 80.0f, 30);
-	enemies.emplace_back(800.0f, 100.0f, 32.0f, 70.0f, 30);
-	enemies.emplace_back(100.0f, 400.0f, 32.0f, 90.0f, 30);
+	WaveManager waveManager;
+	waveManager.spawnNextWave(enemies);
+
+	//创建最高分
+	SaveData saveData;
+	const std::string highScorePath = "high_score.txt";
+	int highScore = saveData.loadHighScore(highScorePath);
 
 	int score = 0;
+	GameState gameState = GameState::Playing;
 
 	constexpr double fixedDt = 1.0 / 60.0;
 	double accumulator = 0.0;
 
 	bool running = true;
 	while (running) {
+		//时间计算
 		const Uint64 currentCounter = SDL_GetPerformanceCounter();
 		constexpr double maxFrameTime = 0.25;
 
@@ -294,25 +429,60 @@ int main(int argc, char* argv[]) {
 		const double frameTime =
 			std::min(rawFrameTime, maxFrameTime);
 		previousCounter = currentCounter;
-		accumulator += frameTime;
+		if (gameState == GameState::Playing) {
+			accumulator += frameTime;
+		}
 
 		bool fireRequested = false;
 
+		//事件循环
 		SDL_Event event{};
 		while (SDL_PollEvent(&event) != 0) {
+			//退出
 			if (event.type == SDL_QUIT) {
 				running = false;
 			}
 			if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) {
 				running = false;
 			}
+			//射击
 			if (event.type == SDL_MOUSEBUTTONDOWN &&
 				event.button.button == SDL_BUTTON_LEFT) {
 				fireRequested = true;
 			}
+			//暂停
+			if (event.type == SDL_KEYDOWN &&
+				event.key.keysym.sym == SDLK_p &&
+				event.key.repeat == 0) {
+
+				if (gameState == GameState::Playing) {
+					gameState = GameState::Paused;
+				}
+				else if (gameState == GameState::Paused) {
+					gameState = GameState::Playing;
+				}
+			}
+			//重开
+			if (event.type == SDL_KEYDOWN &&
+				event.key.keysym.sym == SDLK_r &&
+				event.key.repeat == 0 &&
+				gameState == GameState::Gameover) {
+
+				player.reset(456.0f, 246.0f, 3);
+
+				bullets.clear();
+				enemies.clear();
+
+				waveManager.reset();
+				waveManager.spawnNextWave(enemies);
+
+				score = 0;
+				accumulator = 0.0;
+				gameState = GameState::Playing;
+			}
 		}
 
-		while (accumulator >= fixedDt) {
+		while (gameState == GameState::Playing && accumulator >= fixedDt) {
 			const Uint8* keyboardState = SDL_GetKeyboardState(nullptr);
 
 			float directionX = 0.0f;
@@ -344,6 +514,15 @@ int main(int argc, char* argv[]) {
 					player.centerY(),
 					static_cast<float>(fixedDt)
 				);
+
+				if (intersects(player.hitbox(), enemy.hitbox())) {
+					player.takeDamage(1);
+					enemy.defeat();
+				}
+			}
+
+			if (!player.isAlive()) {
+				gameState = GameState::Gameover;
 			}
 
 			for (Bullet& bullet : bullets) {
@@ -362,6 +541,14 @@ int main(int argc, char* argv[]) {
 
 						if (!enemy.isAlive()) {
 							score += 100;
+
+							if (score > highScore) {
+								highScore = score;
+
+								if (!saveData.saveHighScore(highScorePath, highScore)) {
+									std::cerr << "无法保存最高分\n";
+								}
+							}
 						}
 
 						break;
@@ -377,6 +564,11 @@ int main(int argc, char* argv[]) {
 						return !enemy.isAlive();
 					}),
 				enemies.end());
+
+			if (enemies.empty() &&
+				gameState == GameState::Playing) {
+				waveManager.spawnNextWave(enemies);
+			}
 
 			bullets.erase(
 				std::remove_if(
@@ -409,7 +601,7 @@ int main(int argc, char* argv[]) {
 			aimY /= aimLength;
 		}
 
-		if (fireRequested && aimLength > 0.0f) {
+		if (gameState == GameState::Playing && fireRequested && aimLength > 0.0f) {
 			bullets.emplace_back(
 				playerCenterX,
 				playerCenterY,
@@ -447,9 +639,16 @@ int main(int argc, char* argv[]) {
 			playerCenterY + aimY * aimLineLength
 		);
 
-		//计分板绘制
+		//状态栏绘制
 		const std::string title =
-			"Neon Siege - Day 4 | Score: " + std::to_string(score);
+			"Neon Siege - Day 5 | Wave " +
+			std::to_string(waveManager.currentWave()) +
+			" | HP: " +
+			std::to_string(player.health()) +
+			" | Score: " +
+			std::to_string(score) +
+			" | High: " +
+			std::to_string(highScore);
 
 		SDL_SetWindowTitle(window, title.c_str());
 
@@ -458,6 +657,10 @@ int main(int argc, char* argv[]) {
 		if (smokeTest) {
 			running = false;
 		}
+	}
+
+	if (!saveData.saveHighScore(highScorePath, highScore)) {
+		std::cerr << "无法保存最高分\n";
 	}
 
 	SDL_DestroyRenderer(renderer);
