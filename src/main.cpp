@@ -5,6 +5,7 @@
 #include <cmath>
 #include <algorithm>
 #include <vector>
+#include <string>
 
 class Player {
 public:
@@ -44,7 +45,7 @@ public:
 		x_ += directionX * speed_ * dt;
 		y_ += directionY * speed_ * dt;
 
-		x_ = std::clamp(x_, 0.0f, windowHeight - size_);
+		x_ = std::clamp(x_, 0.0f, windowWidth - size_);
 		y_ = std::clamp(y_, 0.0f, windowHeight - size_);
 	}
 
@@ -107,6 +108,18 @@ public:
 			y_ > windowHeight;
 	}
 
+	SDL_FRect bounds() const {
+		return SDL_FRect{ x_,y_,size_,size_ };
+	}
+
+	void consume() {
+		consumed_ = true;
+	}
+
+	bool isConsumed() const {
+		return consumed_;
+	}
+
 	void render(SDL_Renderer* renderer) const {
 		SDL_FRect bulletRect{
 			x_,
@@ -126,7 +139,89 @@ private:
 	float directionY_;
 	float size_;
 	float speed_;
+	bool consumed_ = false;
 };
+
+class Enemy {
+public:
+	Enemy(float x, float y, float size, float speed, int hp)
+		:x_(x), y_(y), size_(size), speed_(speed), hp_(hp) {
+	}
+
+	void update(float targetX, float targetY, float dt);
+
+	void takeDamage(int damage);
+
+	bool isAlive() const;
+
+	void render(SDL_Renderer* renderer) const;
+
+	SDL_FRect bounds() const {
+		return SDL_FRect{ x_,y_,size_,size_ };
+	}
+
+private:
+	float x_;
+	float y_;
+	float size_;
+	float speed_;
+	int hp_;
+};
+
+void Enemy::update(float targetX, float targetY, float dt) {
+	const float enemyCenterX = x_ + size_ / 2.0f;
+	const float enemyCenterY = y_ + size_ / 2.0f;
+
+	float directionX = targetX - enemyCenterX;
+	float directionY = targetY - enemyCenterY;
+
+	const float directionLength =
+		std::sqrt(directionX * directionX + directionY * directionY);
+
+	if (directionLength > 0.0f) {
+		directionX /= directionLength;
+		directionY /= directionLength;
+	}
+
+	x_ += directionX * speed_ * dt;
+	y_ += directionY * speed_ * dt;
+}
+
+void Enemy::takeDamage(int damage) {
+	if (damage <= 0) {
+		return;
+	}
+
+	hp_ -= damage;
+
+	if (hp_ < 0) {
+		hp_ = 0;
+	}
+}
+
+bool Enemy::isAlive() const {
+	return hp_ > 0;
+}
+
+void Enemy::render(SDL_Renderer* renderer) const {
+	SDL_FRect enemyRect{
+		x_,
+		y_,
+		size_,
+		size_
+	};
+
+	SDL_SetRenderDrawColor(renderer, 220, 60, 70, 255);
+	SDL_RenderFillRectF(renderer, &enemyRect);
+}
+
+bool intersects(const SDL_FRect first, const SDL_FRect second) {
+	return
+		first.x < second.x + second.w &&
+		first.x + first.w > second.x &&
+		first.y < second.y + second.h &&
+		first.y + first.h > second.y;
+}
 
 int main(int argc, char* argv[]) {
 	const bool smokeTest = argc > 1 && std::string_view(argv[1]) == "--smoke-test";
@@ -174,7 +269,16 @@ int main(int argc, char* argv[]) {
 
 	Player player(456.0f, 246.0f, 48.0f, 240.0f);
 
+	//创建子弹
 	std::vector<Bullet> bullets;
+
+	//创建敌人
+	std::vector<Enemy> enemies;
+	enemies.emplace_back(100.0f, 100.0f, 32.0f, 80.0f, 30);
+	enemies.emplace_back(800.0f, 100.0f, 32.0f, 70.0f, 30);
+	enemies.emplace_back(100.0f, 400.0f, 32.0f, 90.0f, 30);
+
+	int score = 0;
 
 	constexpr double fixedDt = 1.0 / 60.0;
 	double accumulator = 0.0;
@@ -234,16 +338,53 @@ int main(int argc, char* argv[]) {
 				960.0f,
 				540.0f);
 
+			for (Enemy& enemy : enemies) {
+				enemy.update(
+					player.centerX(),
+					player.centerY(),
+					static_cast<float>(fixedDt)
+				);
+			}
+
 			for (Bullet& bullet : bullets) {
 				bullet.update(static_cast<float>(fixedDt));
 			}
+
+			for (Bullet& bullet : bullets) {
+				for (Enemy& enemy : enemies) {
+					if (!enemy.isAlive()) {
+						continue;
+					}
+
+					if (intersects(bullet.bounds(), enemy.bounds())) {
+						enemy.takeDamage(10);
+						bullet.consume();
+
+						if (!enemy.isAlive()) {
+							score += 100;
+						}
+
+						break;
+					}
+				}
+			}
+
+			enemies.erase(
+				std::remove_if(
+					enemies.begin(),
+					enemies.end(),
+					[](const Enemy& enemy) {
+						return !enemy.isAlive();
+					}),
+				enemies.end());
 
 			bullets.erase(
 				std::remove_if(
 					bullets.begin(),
 					bullets.end(),
 					[](const Bullet& bullet) {
-						return bullet.isOutside(960.0f, 540.0f);
+						return bullet.isConsumed() ||
+							bullet.isOutside(960.0f, 540.0f);
 					}),
 				bullets.end());
 
@@ -281,6 +422,11 @@ int main(int argc, char* argv[]) {
 		SDL_SetRenderDrawColor(renderer, 18, 18, 18, 255);
 		SDL_RenderClear(renderer);
 
+		//绘制敌人
+		for (const Enemy& enemy : enemies) {
+			enemy.render(renderer);
+		}
+
 		//绘制玩家
 		player.render(renderer);
 
@@ -300,6 +446,12 @@ int main(int argc, char* argv[]) {
 			playerCenterX + aimX * aimLineLength,
 			playerCenterY + aimY * aimLineLength
 		);
+
+		//计分板绘制
+		const std::string title =
+			"Neon Siege - Day 4 | Score: " + std::to_string(score);
+
+		SDL_SetWindowTitle(window, title.c_str());
 
 		SDL_RenderPresent(renderer);
 
