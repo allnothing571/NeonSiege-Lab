@@ -21,12 +21,30 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(SDL2)
 
-add_executable(NeonSiege src/main.cpp)
+add_executable(
+NeonSiege
+src/main.cpp
+src/Collision.h
+src/SaveData.h
+src/SaveData.cpp
+)
+
+add_executable(
+    Day7CollisionRewrite
+    exercises/day7_collision_rewrite.cpp
+)
+
+if(MSVC)
+    target_compile_options(
+        Day7CollisionRewrite
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
 
 add_executable(
     Day1EntityExercise
     exercises/day1_entity_manager.cpp
-)
+ "src/Collision.h" "src/SaveData.cpp")
 
 if(MSVC)
     target_compile_options(
@@ -40,4 +58,3 @@ target_link_libraries(NeonSiege PRIVATE SDL2::SDL2-static)
 if(MSVC)
     target_compile_options(NeonSiege PRIVATE /W4 /permissive- /utf-8)
 endif()
-

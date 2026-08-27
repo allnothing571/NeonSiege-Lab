@@ -6,7 +6,9 @@
 #include <algorithm>
 #include <vector>
 #include <string>
-#include <fstream>
+#include "GameState.h"
+#include "Collision.h"
+#include "SaveData.h"
 
 class Player {
 public:
@@ -226,12 +228,6 @@ private:
 	int hp_;
 };
 
-enum class GameState {
-	Playing,
-	Paused,
-	Gameover
-};
-
 class WaveManager {
 public:
 	void reset() {
@@ -266,35 +262,6 @@ public:
 
 private:
 	int currentWave_ = 0;
-};
-
-class SaveData {
-public:
-	int loadHighScore(const std::string& path) const {
-		std::ifstream input(path);
-		int highScore = 0;
-
-		if (!input || !(input >> highScore) || highScore < 0) {
-			return 0;
-		}
-
-		return highScore;
-	}
-
-	bool saveHighScore(
-		const std::string& path,
-		int highScore) const {
-
-		std::ofstream output(path);
-
-		if (!output) {
-			return false;
-		}
-
-		output << highScore << '\n';
-		return static_cast<bool>(output);
-	}
-
 };
 
 void Enemy::update(float targetX, float targetY, float dt) {
@@ -342,14 +309,6 @@ void Enemy::render(SDL_Renderer* renderer) const {
 
 	SDL_SetRenderDrawColor(renderer, 220, 60, 70, 255);
 	SDL_RenderFillRectF(renderer, &enemyRect);
-}
-
-bool intersects(const SDL_FRect first, const SDL_FRect second) {
-	return
-		first.x < second.x + second.w &&
-		first.x + first.w > second.x &&
-		first.y < second.y + second.h &&
-		first.y + first.h > second.y;
 }
 
 int main(int argc, char* argv[]) {

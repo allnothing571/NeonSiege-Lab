@@ -1,6 +1,6 @@
 # 《霓虹防线》（Neon Siege）
 
-> 当前阶段：第 5 天技术任务已完成，准备进入第 6 天（构建测试、文档与简历）
+> 当前阶段：第 6 天技术验收已完成，进入第 7 天独立讲解、材料整理和双版简历阶段
 >
 > 项目定位：C++ 学习项目；后续仅在自建程序和授权环境中开展游戏安全实验。
 
@@ -62,7 +62,22 @@
 - [x] 最高分读取、更新和本地保存
 - [x] Debug 构建及 `--smoke-test` 通过
 
-第5天技术任务已完成。第6天将集中处理构建说明、连续运行测试、截图/README和简历事实核对。
+第5天技术任务已完成。第6天已完成构建与连续运行验收，截图、README最终核对和简历事实整理仍在进行。
+
+## 第 6 天验收状态
+
+- [x] x64 Debug 构建通过
+- [x] x64 Release 构建通过并可独立启动
+- [x] `--smoke-test` 退出码为 0
+- [x] 连续运行 30 分钟无崩溃
+
+连续运行结果按 2026-08-26 实测记录；具体操作场景不在此扩大为未验证的功能声明。
+
+## 运行截图
+
+![Neon Siege 运行截图](docs/neon_siege_day6.png)
+
+截图中可见玩家、敌人、子弹、瞄准线和 Wave/HP/Score/High 状态栏。
 
 ## 构建
 
@@ -74,6 +89,9 @@
 
 & 'D:\VS2022\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe' `
   --build build --config Debug
+
+& 'D:\VS2022\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe' `
+  --build build --config Release
 ```
 
 生成后运行：
@@ -92,6 +110,13 @@ $env:SDL_VIDEODRIVER = 'dummy'
 Remove-Item Env:SDL_VIDEODRIVER
 ```
 
+## 已知限制
+
+- 当前使用 SDL2 基础图形绘制，没有素材、音频、联网、地图和商店系统。
+- `high_score.txt` 使用相对路径，保存位置取决于程序启动时的工作目录；从不同目录运行可能得到不同的最高分文件。
+- 碰撞使用带少量内缩的轴对齐矩形，属于课程项目级实现，不代表完整物理碰撞系统。
+- 当前代码仍以单个 `src/main.cpp` 为主，模块拆分属于后续整理内容。
+
 ## 计划中的源码结构
 
 ```text
@@ -107,6 +132,8 @@ src/
 ```
 
 只有在对应功能实际运行并通过验收后，才创建和勾选后续模块。
+
+当前已实际拆分的模块：`GameState.h`、`Collision.h`、`SaveData.h/.cpp`；其余类仍暂时保留在 `main.cpp`，以控制拆分风险。
 
 ## 长期路线（不属于本周简历成果）
 
