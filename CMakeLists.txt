@@ -21,18 +21,61 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(SDL2)
 
+add_library(neon_core INTERFACE)
+
+target_include_directories(
+    neon_core
+    INTERFACE
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_sources(
+    neon_core
+    INTERFACE
+    src/core/Types.h
+    src/core/Collision.h
+    src/core/Player.h
+    src/core/Projectile.h
+    src/core/Enemy.h
+    src/core/WaveManager.h
+)
+
+add_library(
+    neon_sdl
+    STATIC
+    src/sdl/SdlGameRenderer.h
+    src/sdl/SdlGameRenderer.cpp
+)
+
+target_include_directories(
+    neon_sdl
+    PUBLIC
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_link_libraries(
+    neon_sdl
+    PUBLIC neon_core
+    PRIVATE SDL2::SDL2-static
+)
+
+if(MSVC)
+    target_compile_options(
+        neon_sdl
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
 add_executable(
 NeonSiege
 src/main.cpp
 src/Collision.h
 src/SaveData.h
-src/SaveData.cpp
-)
+src/SaveData.cpp)
 
 add_executable(
     Day7CollisionRewrite
-    exercises/day7_collision_rewrite.cpp
-)
+    exercises/day7_collision_rewrite.cpp)
 
 if(MSVC)
     target_compile_options(
@@ -43,17 +86,98 @@ endif()
 
 add_executable(
     Day1EntityExercise
-    exercises/day1_entity_manager.cpp
- "src/Collision.h" "src/SaveData.cpp")
+    exercises/day1_entity_manager.cpp)
+
+    add_executable(
+    Day1CoreTypes
+    exercises/day1_core_types.cpp)
+
+target_link_libraries(Day1CoreTypes PRIVATE neon_core)
+
+add_executable(
+    Day1CoreCollision
+    exercises/day1_core_collision.cpp)
+
+target_link_libraries(Day1CoreCollision PRIVATE neon_core)
+
+add_executable(
+    Day1CorePlayer
+    exercises/day1_core_player.cpp
+)
+
+target_link_libraries(
+    Day1CorePlayer
+    PRIVATE
+    neon_core
+)
+
+add_executable(
+    Day1CoreProjectile
+    exercises/day1_core_projectile.cpp
+)
+
+target_link_libraries(
+    Day1CoreProjectile
+    PRIVATE
+    neon_core
+)
+
+add_executable(
+    Day1CoreEnemy
+    exercises/day1_core_enemy.cpp
+)
+
+target_link_libraries(
+    Day1CoreEnemy
+    PRIVATE
+    neon_core
+)
+
+add_executable(
+    Day1CoreWaveManager
+    exercises/day1_core_wave_manager.cpp
+)
+
+target_link_libraries(
+    Day1CoreWaveManager
+    PRIVATE
+    neon_core
+)
 
 if(MSVC)
     target_compile_options(
         Day1EntityExercise
         PRIVATE /W4 /permissive- /utf-8
     )
+
+    target_compile_options(
+        Day1CorePlayer
+        PRIVATE /W4 /permissive- /utf-8
+    )
+
+    target_compile_options(
+        Day1CoreProjectile
+        PRIVATE /W4 /permissive- /utf-8
+    )
+
+        target_compile_options(
+        Day1CoreEnemy
+        PRIVATE /W4 /permissive- /utf-8
+    )
+
+        target_compile_options(
+        Day1CoreWaveManager
+        PRIVATE /W4 /permissive- /utf-8
+    )
 endif()
 
-target_link_libraries(NeonSiege PRIVATE SDL2::SDL2-static)
+target_link_libraries(
+    NeonSiege
+    PRIVATE
+    neon_core
+    neon_sdl
+    SDL2::SDL2-static
+)
 
 if(MSVC)
     target_compile_options(NeonSiege PRIVATE /W4 /permissive- /utf-8)
