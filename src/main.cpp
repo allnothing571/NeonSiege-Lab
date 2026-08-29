@@ -7,309 +7,14 @@
 #include <vector>
 #include <string>
 #include "GameState.h"
-#include "Collision.h"
 #include "SaveData.h"
-
-class Player {
-public:
-	Player(float x, float y, float size, float speed, int health)
-		: x_(x), y_(y), size_(size), speed_(speed), health_(health) {
-
-	}
-
-	void update(
-		float directionX,
-		float directionY,
-		float dt,
-		float windowWidth,
-		float windowHeight) {
-
-		if (y_ <= 0 && directionY < 0.0f) {
-			directionY = 0.0f;
-		}
-		if (y_ >= windowHeight - size_ && directionY > 0.0f) {
-			directionY = 0.0f;
-		}
-		if (x_ <= 0 && directionX < 0.0f) {
-			directionX = 0.0f;
-		}
-		if (x_ >= windowWidth - size_ && directionX > 0.0f) {
-			directionX = 0.0f;
-		}
-
-		const float directionLength =
-			std::sqrt(directionX * directionX + directionY * directionY);
-
-		if (directionLength > 0.0f) {
-			directionX /= directionLength;
-			directionY /= directionLength;
-		}
-
-		x_ += directionX * speed_ * dt;
-		y_ += directionY * speed_ * dt;
-
-		x_ = std::clamp(x_, 0.0f, windowWidth - size_);
-		y_ = std::clamp(y_, 0.0f, windowHeight - size_);
-	}
-
-	void render(SDL_Renderer* renderer) const {
-		SDL_FRect playerRect{
-			x_,
-			y_,
-			size_,
-			size_
-		};
-
-		SDL_SetRenderDrawColor(renderer, 0, 220, 255, 255);
-		SDL_RenderFillRectF(renderer, &playerRect);
-	}
-
-	float centerX() const {
-		return x_ + size_ / 2.0f;
-	}
-
-	float centerY() const {
-		return y_ + size_ / 2.0f;
-	}
-
-	void takeDamage(int damage) {
-		if (damage <= 0) {
-			return;
-		}
-
-		health_ -= damage;
-
-		if (health_ < 0) {
-			health_ = 0;
-		}
-	}
-
-	bool isAlive() const {
-		return health_ > 0;
-	}
-
-	void reset(float x, float y, int health) {
-		x_ = x;
-		y_ = y;
-		health_ = health;
-	}
-
-	int health() const {
-		return health_;
-	}
-
-	SDL_FRect bounds() const {
-		return SDL_FRect{ x_, y_, size_, size_ };
-	}
-
-	SDL_FRect hitbox() const {
-		const float inset = size_ * 0.2f;
-
-		return SDL_FRect{
-			x_ + inset,
-			y_ + inset,
-			size_ - inset * 2.0f,
-			size_ - inset * 2.0f
-		};
-	}
-
-private:
-	float x_;
-	float y_;
-	float size_;
-	float speed_;
-	int health_;
-};
-
-class Bullet {
-public:
-	Bullet(
-		float x,
-		float y,
-		float directionX,
-		float directionY,
-		float size,
-		float speed)
-		: x_(x),
-		y_(y),
-		directionX_(directionX),
-		directionY_(directionY),
-		size_(size),
-		speed_(speed) {
-	}
-
-	void update(float dt) {
-		x_ += directionX_ * speed_ * dt;
-		y_ += directionY_ * speed_ * dt;
-	}
-
-	bool isOutside(float windowWidth,
-		float windowHeight)const {
-
-		return
-			x_ + size_ < 0.0f ||
-			x_ > windowWidth ||
-			y_ + size_ < 0.0f ||
-			y_ > windowHeight;
-	}
-
-	SDL_FRect bounds() const {
-		return SDL_FRect{ x_,y_,size_,size_ };
-	}
-
-	void consume() {
-		consumed_ = true;
-	}
-
-	bool isConsumed() const {
-		return consumed_;
-	}
-
-	void render(SDL_Renderer* renderer) const {
-		SDL_FRect bulletRect{
-			x_,
-			y_,
-			size_,
-			size_
-		};
-
-		SDL_SetRenderDrawColor(renderer, 255, 220, 80, 255);
-		SDL_RenderFillRectF(renderer, &bulletRect);
-	}
-
-private:
-	float x_;
-	float y_;
-	float directionX_;
-	float directionY_;
-	float size_;
-	float speed_;
-	bool consumed_ = false;
-};
-
-class Enemy {
-public:
-	Enemy(float x, float y, float size, float speed, int hp)
-		:x_(x), y_(y), size_(size), speed_(speed), hp_(hp) {
-	}
-
-	void update(float targetX, float targetY, float dt);
-
-	void takeDamage(int damage);
-
-	bool isAlive() const;
-
-	void defeat() {
-		hp_ = 0;
-	}
-
-	void render(SDL_Renderer* renderer) const;
-
-	SDL_FRect bounds() const {
-		return SDL_FRect{ x_,y_,size_,size_ };
-	}
-
-	SDL_FRect hitbox() const {
-		const float inset = size_ * 0.2f;
-
-		return SDL_FRect{
-			x_ + inset,
-			y_ + inset,
-			size_ - inset * 2.0f,
-			size_ - inset * 2.0f
-		};
-	}
-
-private:
-	float x_;
-	float y_;
-	float size_;
-	float speed_;
-	int hp_;
-};
-
-class WaveManager {
-public:
-	void reset() {
-		currentWave_ = 0;
-	}
-
-	void spawnNextWave(std::vector<Enemy>& enemies) {
-		++currentWave_;
-
-		const int enemyCount = currentWave_ + 2;
-
-		for (int i = 0; i < enemyCount; i++) {
-			const float x =
-				80.0f + static_cast<float>(i % 4) * 220.f;
-			const float y =
-				80.0f + static_cast<float>(i / 4) * 140.0f;
-			const float speed =
-				70.0f + static_cast<float>(i % 3) * 10.0f;
-
-			enemies.emplace_back(
-				x,
-				y,
-				32.0f,
-				speed,
-				30);
-		}
-	}
-
-	int currentWave() const {
-		return currentWave_;
-	}
-
-private:
-	int currentWave_ = 0;
-};
-
-void Enemy::update(float targetX, float targetY, float dt) {
-	const float enemyCenterX = x_ + size_ / 2.0f;
-	const float enemyCenterY = y_ + size_ / 2.0f;
-
-	float directionX = targetX - enemyCenterX;
-	float directionY = targetY - enemyCenterY;
-
-	const float directionLength =
-		std::sqrt(directionX * directionX + directionY * directionY);
-
-	if (directionLength > 0.0f) {
-		directionX /= directionLength;
-		directionY /= directionLength;
-	}
-
-	x_ += directionX * speed_ * dt;
-	y_ += directionY * speed_ * dt;
-}
-
-void Enemy::takeDamage(int damage) {
-	if (damage <= 0) {
-		return;
-	}
-
-	hp_ -= damage;
-
-	if (hp_ < 0) {
-		hp_ = 0;
-	}
-}
-
-bool Enemy::isAlive() const {
-	return hp_ > 0;
-}
-
-void Enemy::render(SDL_Renderer* renderer) const {
-	SDL_FRect enemyRect{
-		x_,
-		y_,
-		size_,
-		size_
-	};
-
-	SDL_SetRenderDrawColor(renderer, 220, 60, 70, 255);
-	SDL_RenderFillRectF(renderer, &enemyRect);
-}
+#include "core/Collision.h"
+#include "core/Player.h"
+#include "core/Projectile.h"
+#include "core/Enemy.h"
+#include "core/WaveManager.h"
+#include "sdl/SdlGameRenderer.h"
+#include "sdl/SdlPaths.h"
 
 int main(int argc, char* argv[]) {
 	const bool smokeTest = argc > 1 && std::string_view(argv[1]) == "--smoke-test";
@@ -351,24 +56,51 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
+	neon::sdl::SdlGameRenderer gameRenderer(renderer);
+
 	const double frequency =
 		static_cast<double>(SDL_GetPerformanceFrequency());
 	Uint64 previousCounter = SDL_GetPerformanceCounter();
 
-	Player player(456.0f, 246.0f, 48.0f, 240.0f, 3);
+	const neon::Rect worldBounds{
+		0.0f,
+		0.0f,
+		960.0f,
+		540.0f
+	};
 
-	//创建子弹
-	std::vector<Bullet> bullets;
+	neon::Player player(
+		neon::Vec2{ 456.0f, 246.0f },
+		48.0f,
+		240.0f,
+		3
+	);
 
-	//创建敌人
-	std::vector<Enemy> enemies;
-	WaveManager waveManager;
+	std::vector<neon::Projectile> bullets;
+	std::vector<neon::Enemy> enemies;
+
+	neon::WaveManager waveManager;
 	waveManager.spawnNextWave(enemies);
 
 	//创建最高分
 	SaveData saveData;
-	const std::string highScorePath = "high_score.txt";
-	int highScore = saveData.loadHighScore(highScorePath);
+
+	const std::string highScorePath =
+		smokeTest
+		? std::string{}
+	: neon::sdl::preferenceFilePath("high_score.txt");
+
+	const bool persistenceEnabled =
+		!highScorePath.empty();
+
+	if (!smokeTest && !persistenceEnabled) {
+		std::cerr << "无法获取存档路径\n";
+	}
+
+	int highScore =
+		persistenceEnabled
+		? saveData.loadHighScore(highScorePath)
+		: 0;
 
 	int score = 0;
 	GameState gameState = GameState::Playing;
@@ -427,7 +159,7 @@ int main(int argc, char* argv[]) {
 				event.key.repeat == 0 &&
 				gameState == GameState::Gameover) {
 
-				player.reset(456.0f, 246.0f, 3);
+				player.reset(neon::Vec2{ 456.0f, 246.0f }, 3);
 
 				bullets.clear();
 				enemies.clear();
@@ -461,20 +193,17 @@ int main(int argc, char* argv[]) {
 			}
 
 			player.update(
-				directionX,
-				directionY,
+				neon::Vec2{ directionX,directionY },
 				static_cast<float>(fixedDt),
-				960.0f,
-				540.0f);
+				worldBounds);
 
-			for (Enemy& enemy : enemies) {
+			for (neon::Enemy& enemy : enemies) {
 				enemy.update(
-					player.centerX(),
-					player.centerY(),
+					player.center(),
 					static_cast<float>(fixedDt)
 				);
 
-				if (intersects(player.hitbox(), enemy.hitbox())) {
+				if (neon::intersects(player.hitbox(), enemy.hitbox())) {
 					player.takeDamage(1);
 					enemy.defeat();
 				}
@@ -484,17 +213,17 @@ int main(int argc, char* argv[]) {
 				gameState = GameState::Gameover;
 			}
 
-			for (Bullet& bullet : bullets) {
+			for (neon::Projectile& bullet : bullets) {
 				bullet.update(static_cast<float>(fixedDt));
 			}
 
-			for (Bullet& bullet : bullets) {
-				for (Enemy& enemy : enemies) {
+			for (neon::Projectile& bullet : bullets) {
+				for (neon::Enemy& enemy : enemies) {
 					if (!enemy.isAlive()) {
 						continue;
 					}
 
-					if (intersects(bullet.bounds(), enemy.bounds())) {
+					if (neon::intersects(bullet.bounds(), enemy.bounds())) {
 						enemy.takeDamage(10);
 						bullet.consume();
 
@@ -504,7 +233,8 @@ int main(int argc, char* argv[]) {
 							if (score > highScore) {
 								highScore = score;
 
-								if (!saveData.saveHighScore(highScorePath, highScore)) {
+								if (persistenceEnabled &&
+									!saveData.saveHighScore(highScorePath, highScore)) {
 									std::cerr << "无法保存最高分\n";
 								}
 							}
@@ -519,7 +249,7 @@ int main(int argc, char* argv[]) {
 				std::remove_if(
 					enemies.begin(),
 					enemies.end(),
-					[](const Enemy& enemy) {
+					[](const neon::Enemy& enemy) {
 						return !enemy.isAlive();
 					}),
 				enemies.end());
@@ -533,9 +263,9 @@ int main(int argc, char* argv[]) {
 				std::remove_if(
 					bullets.begin(),
 					bullets.end(),
-					[](const Bullet& bullet) {
+					[&worldBounds](const neon::Projectile& bullet) {
 						return bullet.isConsumed() ||
-							bullet.isOutside(960.0f, 540.0f);
+							bullet.isOutside(worldBounds);
 					}),
 				bullets.end());
 
@@ -546,8 +276,9 @@ int main(int argc, char* argv[]) {
 		int mouseY = 0;
 		SDL_GetMouseState(&mouseX, &mouseY);
 
-		const float playerCenterX = player.centerX();
-		const float playerCenterY = player.centerY();
+		const neon::Vec2 playerCenter = player.center();
+		const float playerCenterX = playerCenter.x;
+		const float playerCenterY = playerCenter.y;
 
 		float aimX = static_cast<float>(mouseX) - playerCenterX;
 		float aimY = static_cast<float>(mouseY) - playerCenterY;
@@ -562,10 +293,8 @@ int main(int argc, char* argv[]) {
 
 		if (gameState == GameState::Playing && fireRequested && aimLength > 0.0f) {
 			bullets.emplace_back(
-				playerCenterX,
-				playerCenterY,
-				aimX,
-				aimY,
+				playerCenter,
+				neon::Vec2{ aimX,aimY },
 				8.0f,
 				600.0f);
 		}
@@ -574,16 +303,16 @@ int main(int argc, char* argv[]) {
 		SDL_RenderClear(renderer);
 
 		//绘制敌人
-		for (const Enemy& enemy : enemies) {
-			enemy.render(renderer);
+		for (const neon::Enemy& enemy : enemies) {
+			gameRenderer.renderEnemy(enemy);
 		}
 
 		//绘制玩家
-		player.render(renderer);
+		gameRenderer.renderPlayer(player);
 
 		//绘制子弹
-		for (const Bullet& bullet : bullets) {
-			bullet.render(renderer);
+		for (const neon::Projectile& bullet : bullets) {
+			gameRenderer.renderProjectile(bullet);
 		}
 
 		//朝向线绘制
@@ -618,7 +347,8 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-	if (!saveData.saveHighScore(highScorePath, highScore)) {
+	if (persistenceEnabled &&
+		!saveData.saveHighScore(highScorePath, highScore)) {
 		std::cerr << "无法保存最高分\n";
 	}
 

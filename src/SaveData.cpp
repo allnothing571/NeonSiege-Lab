@@ -1,9 +1,10 @@
 #include "SaveData.h"
 
+#include <filesystem>
 #include <fstream>
 
 int SaveData::loadHighScore(const std::string& path) const {
-	std::ifstream input(path);
+	std::ifstream input(std::filesystem::u8path(path));
 	int highScore = 0;
 
 	if (!input || !(input >> highScore) || highScore < 0) {
@@ -16,7 +17,7 @@ int SaveData::loadHighScore(const std::string& path) const {
 bool SaveData::saveHighScore(
 	const std::string& path,
 	int highScore) const {
-	std::ofstream output(path);
+	std::ofstream output(std::filesystem::u8path(path));
 
 	if (!output) {
 		return false;

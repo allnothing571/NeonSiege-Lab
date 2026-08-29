@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(FetchContent)
+include(CTest)
 
 set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC ON CACHE BOOL "" FORCE)
@@ -45,6 +46,8 @@ add_library(
     STATIC
     src/sdl/SdlGameRenderer.h
     src/sdl/SdlGameRenderer.cpp
+    src/sdl/SdlPaths.h
+    src/sdl/SdlPaths.cpp
 )
 
 target_include_directories(
@@ -69,7 +72,6 @@ endif()
 add_executable(
 NeonSiege
 src/main.cpp
-src/Collision.h
 src/SaveData.h
 src/SaveData.cpp)
 
@@ -181,4 +183,14 @@ target_link_libraries(
 
 if(MSVC)
     target_compile_options(NeonSiege PRIVATE /W4 /permissive- /utf-8)
+endif()
+
+if(BUILD_TESTING)
+    add_test(NAME CoreTypes COMMAND Day1CoreTypes)
+    add_test(NAME CoreCollision COMMAND Day1CoreCollision)
+    add_test(NAME CorePlayer COMMAND Day1CorePlayer)
+    add_test(NAME CoreProjectile COMMAND Day1CoreProjectile)
+    add_test(NAME CoreEnemy COMMAND Day1CoreEnemy)
+    add_test(NAME CoreWaveManager COMMAND Day1CoreWaveManager)
+    add_test(NAME NeonSiegeSmoke COMMAND NeonSiege --smoke-test)
 endif()
