@@ -3,9 +3,7 @@
 struct SDL_Renderer;
 
 namespace neon {
-	class Player;
-	class Enemy;
-	class Projectile;
+	struct GameSnapshot;
 }
 
 namespace neon::sdl {
@@ -13,11 +11,9 @@ namespace neon::sdl {
 	public:
 		explicit SdlGameRenderer(SDL_Renderer* renderer);
 
-		void renderPlayer(const Player& player) const;
-
-		void renderEnemy(const Enemy& enemy) const;
-
-		void renderProjectile(const Projectile& projectile) const;
+		void render(
+			const GameSnapshot& snapshot
+		) const;
 
 	private:
 		SDL_Renderer* renderer_;

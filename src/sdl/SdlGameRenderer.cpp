@@ -1,10 +1,9 @@
 #include "sdl/SdlGameRenderer.h"
 
 #include <SDL.h>
+#include <cmath>
 
-#include "core/Player.h"
-#include "core/Enemy.h"
-#include "core/Projectile.h"
+#include "core/GameSnapshot.h"
 
 namespace neon::sdl {
 
@@ -12,46 +11,121 @@ namespace neon::sdl {
 		: renderer_(renderer) {
 	}
 
-	void SdlGameRenderer::renderPlayer(const Player& player) const {
-		const Rect playerBounds = player.bounds();
+	void SdlGameRenderer::render(
+		const GameSnapshot& snapshot)const {
 
-		SDL_FRect playerRect{
-			playerBounds.x,
-			playerBounds.y,
-			playerBounds.w,
-			playerBounds.h
+		const auto drawRectangle =
+			[this](
+				const Rect& bounds,
+				Uint8 red,
+				Uint8 green,
+				Uint8 blue) {
+
+					const SDL_FRect rectangle{
+						bounds.x,
+						bounds.y,
+						bounds.w,
+						bounds.h
+					};
+
+					SDL_SetRenderDrawColor(
+						renderer_,
+						red,
+						green,
+						blue,
+						255
+					);
+					SDL_RenderFillRectF(
+						renderer_,
+						&rectangle
+					);
+			};
+
+		SDL_SetRenderDrawColor(
+			renderer_,
+			18,
+			18,
+			18,
+			255
+		);
+
+		SDL_RenderClear(renderer_);
+
+		for (const EnemySnapshot& enemy :
+			snapshot.enemies) {
+
+			drawRectangle(
+				enemy.bounds,
+				220,
+				60,
+				70
+			);
+		}
+
+		drawRectangle(
+			snapshot.player.bounds,
+			0,
+			220,
+			255
+		);
+
+		for (const ProjectileSnapshot& projectile :
+			snapshot.projectiles) {
+
+			drawRectangle(
+				projectile.bounds,
+				255,
+				220,
+				80
+			);
+		}
+
+		const Vec2 playerCenter{
+			snapshot.player.bounds.x +
+			snapshot.player.bounds.w / 2.0f,
+			snapshot.player.bounds.y +
+			snapshot.player.bounds.h / 2.0f
 		};
 
-		SDL_SetRenderDrawColor(renderer_, 0, 220, 255, 255);
-		SDL_RenderFillRectF(renderer_, &playerRect);
-	}
-
-	void SdlGameRenderer::renderEnemy(const Enemy& enemy)const {
-		const Rect enemyBounds = enemy.bounds();
-
-		SDL_FRect enemyRect{
-			enemyBounds.x,
-			enemyBounds.y,
-			enemyBounds.w,
-			enemyBounds.h
+		Vec2 aimDirection{
+			snapshot.aimPosition.x -
+			playerCenter.x,
+			snapshot.aimPosition.y -
+			playerCenter.y
 		};
 
-		SDL_SetRenderDrawColor(renderer_, 220, 60, 70, 255);
-		SDL_RenderFillRectF(renderer_, &enemyRect);
-	}
+		const float aimLength =
+			std::sqrt(
+				aimDirection.x * aimDirection.x +
+				aimDirection.y * aimDirection.y
+			);
 
-	void SdlGameRenderer::renderProjectile(const Projectile& projectile)const {
-		const Rect projectileBounds = projectile.bounds();
+		if (aimLength > 0.0f) {
+			aimDirection.x /= aimLength;
+			aimDirection.y /= aimLength;
 
-		SDL_FRect projectileRect{
-			projectileBounds.x,
-			projectileBounds.y,
-			projectileBounds.w,
-			projectileBounds.h
-		};
+			constexpr float lineLength = 60.0f;
 
-		SDL_SetRenderDrawColor(renderer_, 255, 220, 80, 255);
-		SDL_RenderFillRectF(renderer_, &projectileRect);
+			SDL_SetRenderDrawColor(
+				renderer_,
+				255,
+				80,
+				160,
+				255
+			);
+
+			SDL_RenderDrawLineF(
+				renderer_,
+				playerCenter.x,
+				playerCenter.y,
+				playerCenter.x +
+				aimDirection.x * lineLength,
+				playerCenter.y +
+				aimDirection.y * lineLength
+			);
+		}
+
+		SDL_RenderPresent(renderer_);
 	}
 
 }//namespace neon::sdl

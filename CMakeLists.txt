@@ -22,24 +22,37 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(SDL2)
 
-add_library(neon_core INTERFACE)
+add_library(neon_core STATIC)
 
 target_include_directories(
     neon_core
-    INTERFACE
+    PUBLIC
     ${CMAKE_SOURCE_DIR}/src
 )
 
 target_sources(
     neon_core
-    INTERFACE
+    PRIVATE
     src/core/Types.h
+    src/core/InputCommand.h
+    src/core/GameState.h
+    src/core/GameplayConfig.h
+    src/core/GameSnapshot.h
     src/core/Collision.h
     src/core/Player.h
     src/core/Projectile.h
     src/core/Enemy.h
     src/core/WaveManager.h
+    src/core/Simulation.h
+    src/core/Simulation.cpp
 )
+
+if(MSVC)
+    target_compile_options(
+        neon_core
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
 
 add_library(
     neon_sdl
@@ -48,6 +61,8 @@ add_library(
     src/sdl/SdlGameRenderer.cpp
     src/sdl/SdlPaths.h
     src/sdl/SdlPaths.cpp
+    src/sdl/SdlInput.h
+    src/sdl/SdlInput.cpp
 )
 
 target_include_directories(
@@ -146,6 +161,60 @@ target_link_libraries(
     neon_core
 )
 
+add_executable(
+    Day2InputCommand
+    exercises/day2_input_command.cpp
+)
+
+target_link_libraries(
+    Day2InputCommand
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day2InputCommand
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day2GameplayConfig
+    exercises/day2_gameplay_config.cpp
+)
+
+target_link_libraries(
+    Day2GameplayConfig
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day2GameplayConfig
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day2Simulation
+    exercises/day2_simulation.cpp
+)
+
+target_link_libraries(
+    Day2Simulation
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day2Simulation
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
 if(MSVC)
     target_compile_options(
         Day1EntityExercise
@@ -192,5 +261,8 @@ if(BUILD_TESTING)
     add_test(NAME CoreProjectile COMMAND Day1CoreProjectile)
     add_test(NAME CoreEnemy COMMAND Day1CoreEnemy)
     add_test(NAME CoreWaveManager COMMAND Day1CoreWaveManager)
+    add_test(NAME InputCommand COMMAND Day2InputCommand)
+    add_test(NAME GameplayConfig COMMAND Day2GameplayConfig)
+    add_test(NAME Simulation COMMAND Day2Simulation)
     add_test(NAME NeonSiegeSmoke COMMAND NeonSiege --smoke-test)
 endif()
