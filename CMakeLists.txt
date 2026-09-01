@@ -39,6 +39,12 @@ target_sources(
     src/core/GameplayConfig.h
     src/core/GameSnapshot.h
     src/core/Collision.h
+    src/core/Obstacle.h
+    src/core/LineOfSight.h
+    src/core/AimSpread.h
+    src/core/SpawnPlacement.h
+    src/core/SpawnPlacement.cpp
+    src/core/Weapon.h
     src/core/Player.h
     src/core/Projectile.h
     src/core/Enemy.h
@@ -215,6 +221,96 @@ if(MSVC)
     )
 endif()
 
+add_executable(
+    Day3Obstacle
+    exercises/day3_obstacle.cpp
+)
+
+target_link_libraries(
+    Day3Obstacle
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day3Obstacle
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day3LineOfSight
+    exercises/day3_line_of_sight.cpp
+)
+
+target_link_libraries(
+    Day3LineOfSight
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day3LineOfSight
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day3SpawnPlacement
+    exercises/day3_spawn_placement.cpp
+)
+
+target_link_libraries(
+    Day3SpawnPlacement
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day3SpawnPlacement
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day3Weapon
+    exercises/day3_weapon.cpp
+)
+
+target_link_libraries(
+    Day3Weapon
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day3Weapon
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day3AimSpread
+    exercises/day3_aim_spread.cpp
+)
+
+target_link_libraries(
+    Day3AimSpread
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day3AimSpread
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
 if(MSVC)
     target_compile_options(
         Day1EntityExercise
@@ -264,5 +360,10 @@ if(BUILD_TESTING)
     add_test(NAME InputCommand COMMAND Day2InputCommand)
     add_test(NAME GameplayConfig COMMAND Day2GameplayConfig)
     add_test(NAME Simulation COMMAND Day2Simulation)
+    add_test(NAME Obstacle COMMAND Day3Obstacle)
+    add_test(NAME LineOfSight COMMAND Day3LineOfSight)
+    add_test(NAME SpawnPlacement COMMAND Day3SpawnPlacement)
+    add_test(NAME Weapon COMMAND Day3Weapon)
+    add_test(NAME AimSpread COMMAND Day3AimSpread)
     add_test(NAME NeonSiegeSmoke COMMAND NeonSiege --smoke-test)
 endif()

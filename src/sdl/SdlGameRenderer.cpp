@@ -51,6 +51,17 @@ namespace neon::sdl {
 
 		SDL_RenderClear(renderer_);
 
+		for (const ObstacleSnapshot& obstacle :
+			snapshot.obstacles) {
+
+			drawRectangle(
+				obstacle.bounds,
+				100,
+				100,
+				120
+			);
+		}
+
 		for (const EnemySnapshot& enemy :
 			snapshot.enemies) {
 

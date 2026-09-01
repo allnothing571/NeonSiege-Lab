@@ -1,6 +1,9 @@
-#include <iostream>
-#include <vector>
 #include <cmath>
+#include <iostream>
+#include <random>
+#include <vector>
+
+#include "core/GameplayConfig.h"
 #include "core/WaveManager.h"
 
 bool nearlyEqual(float first, float second) {
@@ -9,75 +12,115 @@ bool nearlyEqual(float first, float second) {
 }
 
 int main() {
+	const neon::GameplayConfig config{};
+
+	const neon::Rect playerBounds{
+		config.playerStartPosition.x,
+		config.playerStartPosition.y,
+		config.playerSize,
+		config.playerSize
+	};
+
+	const std::vector<neon::Obstacle> obstacles;
+
 	std::vector<neon::Enemy> enemies;
 	neon::WaveManager waveManager;
+	std::mt19937 randomEngine{ config.randomSeed };
 
 	const bool initialStatePassed =
 		waveManager.currentWave() == 0 &&
 		enemies.empty();
 
-	std::cout << "currentWave: " << waveManager.currentWave() << ' '
-		<< "enemiesCount: " << enemies.size() << '\n';
+	const int firstSpawned =
+		waveManager.spawnNextWave(
+			enemies,
+			randomEngine,
+			config,
+			playerBounds,
+			obstacles
+		);
 
-	waveManager.spawnNextWave(enemies);
+	const neon::Rect firstPosition =
+		enemies.front().bounds();
 
 	const bool firstWavePassed =
+		firstSpawned == 3 &&
 		waveManager.currentWave() == 1 &&
 		enemies.size() == 3;
 
-	std::cout << "currentWave: " << waveManager.currentWave() << ' '
-		<< "enemiesCount: " << enemies.size() << '\n';
-
 	enemies.clear();
 
-	waveManager.spawnNextWave(enemies);
+	const int secondSpawned =
+		waveManager.spawnNextWave(
+			enemies,
+			randomEngine,
+			config,
+			playerBounds,
+			obstacles
+		);
 
 	const bool secondWavePassed =
+		secondSpawned == 4 &&
 		waveManager.currentWave() == 2 &&
 		enemies.size() == 4;
 
-	std::cout << "currentWave: " << waveManager.currentWave() << ' '
-		<< "enemiesCount: " << enemies.size() << '\n';
-
 	enemies.clear();
 
-	waveManager.spawnNextWave(enemies);
+	const int thirdSpawned =
+		waveManager.spawnNextWave(
+			enemies,
+			randomEngine,
+			config,
+			playerBounds,
+			obstacles
+		);
 
 	const bool thirdWavePassed =
+		thirdSpawned == 5 &&
 		waveManager.currentWave() == 3 &&
-		enemies.size() == 5 &&
-		nearlyEqual(enemies.back().bounds().x, 80.0f) &&
-		nearlyEqual(enemies.back().bounds().y, 220.f);
-
-	std::cout << "currentWave: " << waveManager.currentWave() << ' '
-		<< "enemiesCount: " << enemies.size() << '\n';
-
-	std::cout << "lastenemyX: " << enemies.back().bounds().x << ' '
-		<< "lastenemyY: " << enemies.back().bounds().y << '\n';
+		enemies.size() == 5;
 
 	waveManager.reset();
-
-	const bool resetWavePassed =
-		waveManager.currentWave() == 0;
-
+	randomEngine.seed(config.randomSeed);
 	enemies.clear();
 
-	waveManager.spawnNextWave(enemies);
+	const int resetSpawned =
+		waveManager.spawnNextWave(
+			enemies,
+			randomEngine,
+			config,
+			playerBounds,
+			obstacles
+		);
 
-	const bool firstWaveAfterPassed =
+	const neon::Rect resetFirstPosition =
+		enemies.front().bounds();
+
+	const bool resetAndDeterminismPassed =
+		resetSpawned == 3 &&
 		waveManager.currentWave() == 1 &&
-		enemies.size() == 3;
-
-	std::cout << "currentWave: " << waveManager.currentWave() << ' '
-		<< "enemiesCount: " << enemies.size() << '\n';
+		enemies.size() == 3 &&
+		nearlyEqual(
+			firstPosition.x,
+			resetFirstPosition.x
+		) &&
+		nearlyEqual(
+			firstPosition.y,
+			resetFirstPosition.y
+		);
 
 	const bool passed =
 		initialStatePassed &&
 		firstWavePassed &&
 		secondWavePassed &&
 		thirdWavePassed &&
-		resetWavePassed &&
-		firstWaveAfterPassed;
+		resetAndDeterminismPassed;
+
+	std::cout
+		<< "first: " << firstSpawned << '\n'
+		<< "second: " << secondSpawned << '\n'
+		<< "third: " << thirdSpawned << '\n'
+		<< "reset: " << resetSpawned << '\n';
 
 	return passed ? 0 : 1;
 }

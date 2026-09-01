@@ -1,7 +1,13 @@
 #pragma once
 
+#include <algorithm>
+#include <random>
 #include <vector>
+
 #include "core/Enemy.h"
+#include "core/GameplayConfig.h"
+#include "core/Obstacle.h"
+#include "core/SpawnPlacement.h"
 
 namespace neon {
 
@@ -11,25 +17,66 @@ namespace neon {
 			currentWave_ = 0;
 		}
 
-		void spawnNextWave(std::vector<neon::Enemy>& enemies) {
-			++currentWave_;
+		int spawnNextWave(
+			std::vector<Enemy>& enemies,
+			std::mt19937& randomEngine,
+			const GameplayConfig& config,
+			const Rect& playerBounds,
+			const std::vector<Obstacle>& obstacles) {
 
-			const int enemyCount = currentWave_ + 2;
+			const int nextWave = currentWave_ + 1;
 
-			for (int i = 0; i < enemyCount; i++) {
-				const neon::Vec2 position = {
-					80.0f + static_cast<float>(i % 4) * 220.0f,
-					80.0f + static_cast<float>(i / 4) * 140.0f,
-				};
+			const int enemyCount =
+				std::max(
+					0,
+					std::min(
+						nextWave + 2,
+						config.maximumEnemiesPerWave
+					)
+				);
+
+			int spawnedCount = 0;
+
+			for (int index = 0;
+				index < enemyCount;
+				++index) {
+
+				const auto position =
+					findRandomSpawnPosition(
+						randomEngine,
+						config.worldBounds,
+						config.enemySize,
+						playerBounds,
+						obstacles,
+						enemies,
+						config.spawnMaxAttemptsPerEnemy
+					);
+
+				if (!position.has_value()) {
+					continue;
+				}
+
 				const float speed =
-					70.0f + static_cast<float>(i % 3) * 10.0f;
+					config.enemyBaseSpeed +
+					static_cast<float>(
+						index % 3
+						) * config.enemySpeedStep;
 
 				enemies.emplace_back(
-					position,
-					32.0f,
+					*position,
+					config.enemySize,
 					speed,
-					30);
+					config.enemyHealth
+				);
+
+				++spawnedCount;
 			}
+
+			if (spawnedCount > 0) {
+				currentWave_ = nextWave;
+			}
+
+			return spawnedCount;
 		}
 
 		int currentWave() const {

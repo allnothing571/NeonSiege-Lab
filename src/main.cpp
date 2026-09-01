@@ -88,6 +88,8 @@ int main(int argc, char* argv[]) {
 	constexpr double fixedDt = 1.0 / 60.0;
 	double accumulator = 0.0;
 
+	bool pendingReloadPressed = false;
+
 	bool running = true;
 
 	while (running) {
@@ -118,6 +120,13 @@ int main(int argc, char* argv[]) {
 		neon::InputCommand command =
 			sdlInput.consumeCommand();
 
+		pendingReloadPressed =
+			pendingReloadPressed ||
+			command.reloadPressed;
+
+		command.reloadPressed =
+			pendingReloadPressed;
+
 		const bool stateCommand =
 			command.pausePressed ||
 			(command.restartPressed &&
@@ -129,6 +138,8 @@ int main(int argc, char* argv[]) {
 				command,
 				static_cast<float>(fixedDt)
 			);
+
+			pendingReloadPressed = false;
 
 			command.pausePressed = false;
 			command.restartPressed = false;
@@ -151,6 +162,8 @@ int main(int argc, char* argv[]) {
 				command,
 				static_cast<float>(fixedDt)
 			);
+
+			pendingReloadPressed = false;
 
 			//单次按键不能再补帧期间重复生效
 			command.pausePressed = false;
@@ -179,6 +192,10 @@ int main(int argc, char* argv[]) {
 			std::to_string(snapshot.currentWave) +
 			" | HP: " +
 			std::to_string(snapshot.player.health) +
+			" | Ammo: " +
+			std::to_string(snapshot.player.ammoInMagazine) +
+			"/" +
+			std::to_string(snapshot.player.magazineCapacity) +
 			" | Score: " +
 			std::to_string(snapshot.score) +
 			" | High: " +

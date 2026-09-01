@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include "core/Types.h"
 
 namespace neon {
@@ -21,9 +23,23 @@ namespace neon {
 		float playerSpeed = 240.0f;
 		int playerInitialHealth = 3;
 		int enemyContactDamage = 1;
+		float enemySize = 32.0f;
+		float enemyBaseSpeed = 70.0f;
+		float enemySpeedStep = 10.0f;
+		int enemyHealth = 30;
+
+		int maximumEnemiesPerWave = 12;
+		int spawnMaxAttemptsPerEnemy = 64;
+
+		std::uint32_t randomSeed = 1337u;
+
+		int magazineCapacity = 12;
+		float fireInterval = 0.2f;
+		float reloadDuration = 1.2f;
 
 		float playerProjectileSize = 8.0f;
 		float playerProjectileSpeed = 600.0f;
+		float playerProjectileSpreadDegrees = 3.0f;
 		int playerProjectileDamage = 10;
 
 		int scorePerEnemy = 100;

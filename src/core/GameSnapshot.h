@@ -12,6 +12,11 @@ namespace neon {
 		Rect bounds{};
 		int health = 0;
 		bool alive = false;
+
+		int ammoInMagazine = 0;
+		int magazineCapacity = 0;
+		bool reloading = false;
+		float reloadProgress = 0.0f;
 	};
 
 	struct EnemySnapshot
@@ -25,6 +30,10 @@ namespace neon {
 		Rect bounds{};
 	};
 
+	struct ObstacleSnapshot {
+		Rect bounds{};
+	};
+
 	struct GameSnapshot
 	{
 		GameState state = GameState::Playing;
@@ -32,6 +41,7 @@ namespace neon {
 		PlayerSnapshot player{};
 		std::vector<EnemySnapshot> enemies{};
 		std::vector<ProjectileSnapshot> projectiles{};
+		std::vector<ObstacleSnapshot> obstacles;
 
 		Vec2 aimPosition{};
 
