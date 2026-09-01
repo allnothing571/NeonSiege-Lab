@@ -5,6 +5,7 @@
 #include "core/Simulation.h"
 #include "core/Collision.h"
 #include "core/AimSpread.h"
+#include "core/LineOfSight.h"
 
 namespace neon {
 
@@ -14,7 +15,8 @@ namespace neon {
 			config_.playerStartPosition,
 			config_.playerSize,
 			config_.playerSpeed,
-			config_.playerInitialHealth
+			config_.playerInitialHealth,
+			config_.playerInvulnerabilityDuration
 		),
 		weapon_(
 			config_.magazineCapacity,
@@ -156,11 +158,82 @@ namespace neon {
 			config_.worldBounds
 		);
 
+		int activeEnemyProjectileCount =
+			static_cast<int>(
+				std::count_if(
+					projectiles_.begin(),
+					projectiles_.end(),
+					[](const Projectile& projectile) {
+						return !projectile.isConsumed() &&
+							projectile.faction() ==
+							ProjectileFaction::Enemy;
+					}
+				)
+				);
+
 		for (Enemy& enemy : enemies_) {
+			if (!enemy.isAlive()) {
+				continue;
+			}
+
 			enemy.update(
 				player_.center(),
 				fixedDt
 			);
+
+			if (enemy.kind() == EnemyKind::Shooter) {
+				const bool visible =
+					hasLineOfSight(
+						enemy.center(),
+						player_.center(),
+						obstacles_
+					);
+
+				const bool fireRequested =
+					enemy.updateShooterAttack(
+						visible,
+						fixedDt
+					);
+
+				if (fireRequested &&
+					activeEnemyProjectileCount <
+					config_.maximumEnemyProjectiles) {
+
+					const Vec2 enemyCenter =
+						enemy.center();
+
+					const Vec2 playerCenter =
+						player_.center();
+
+					Vec2 direction{
+						playerCenter.x - enemyCenter.x,
+						playerCenter.y - enemyCenter.y
+					};
+
+					const float directionLength =
+						std::sqrt(
+							direction.x * direction.x +
+							direction.y * direction.y
+						);
+
+					if (directionLength > 0.0f) {
+						direction.x /= directionLength;
+						direction.y /= directionLength;
+
+						projectiles_.emplace_back(
+							enemyCenter,
+							direction,
+							config_.enemyProjectileSize,
+							config_.enemyProjectileSpeed,
+							ProjectileFaction::Enemy,
+							config_.enemyProjectileDamage,
+							config_.enemyProjectileLifetime
+						);
+
+						++activeEnemyProjectileCount;
+					}
+				}
+			}
 
 			if (intersects(
 				player_.hitbox(),
@@ -174,10 +247,6 @@ namespace neon {
 			}
 		}
 
-		if (!player_.isAlive()) {
-			state_ = GameState::Gameover;
-		}
-
 		for (Projectile& projectile : projectiles_) {
 			projectile.update(fixedDt);
 		}
@@ -186,9 +255,63 @@ namespace neon {
 			if (projectile.isConsumed()) {
 				continue;
 			}
+			const bool hitObstacle =
+				std::any_of(
+					obstacles_.begin(),
+					obstacles_.end(),
+					[&projectile](
+						const Obstacle& obstacle) {
+
+							return intersects(
+								projectile.bounds(),
+								obstacle.bounds()
+							);
+					}
+				);
+
+			if (hitObstacle) {
+				projectile.consume();
+			}
+		}
+
+		for (Projectile& projectile : projectiles_) {
+			if (projectile.isConsumed() ||
+				projectile.faction() !=
+				ProjectileFaction::Enemy) {
+
+				continue;
+			}
+
+			if (intersects(
+				projectile.bounds(),
+				player_.hitbox())) {
+
+				// A hit enemy projectile is always consumed.
+				projectile.consume();
+
+				// Player decides whether the damage is applied.
+				player_.takeDamage(
+					projectile.damage()
+				);
+			}
+		}
+
+		for (Projectile& projectile : projectiles_) {
+			if (projectile.isConsumed() ||
+				projectile.faction() !=
+				ProjectileFaction::Player) {
+
+				continue;
+			}
 
 			for (Enemy& enemy : enemies_) {
 				if (!enemy.isAlive()) {
+					continue;
+				}
+
+				if (projectile.faction() !=
+					ProjectileFaction::Player) {
+
 					continue;
 				}
 
@@ -197,7 +320,7 @@ namespace neon {
 					enemy.bounds())) {
 
 					enemy.takeDamage(
-						config_.playerProjectileDamage
+						projectile.damage()
 					);
 
 					projectile.consume();
@@ -209,6 +332,10 @@ namespace neon {
 					break;
 				}
 			}
+		}
+
+		if (!player_.isAlive()) {
+			state_ = GameState::Gameover;
 		}
 
 		enemies_.erase(
@@ -297,7 +424,10 @@ namespace neon {
 						playerCenter,
 						direction,
 						config_.playerProjectileSize,
-						config_.playerProjectileSpeed
+						config_.playerProjectileSpeed,
+						ProjectileFaction::Player,
+						config_.playerProjectileDamage,
+						config_.playerProjectileLifetime
 					);
 				}
 			}
@@ -311,6 +441,9 @@ namespace neon {
 		result.player.bounds = player_.bounds();
 		result.player.health = player_.health();
 		result.player.alive = player_.isAlive();
+
+		result.player.invulnerable =
+			player_.isInvulnerable();
 
 		result.player.ammoInMagazine =
 			weapon_.ammoInMagazine();
@@ -346,7 +479,10 @@ namespace neon {
 			result.enemies.push_back(
 				EnemySnapshot{
 					enemy.bounds(),
-					enemy.isAlive()
+					enemy.kind(),
+					enemy.isAlive(),
+					enemy.isWarning(),
+					enemy.warningProgress()
 				}
 			);
 		}
@@ -356,7 +492,8 @@ namespace neon {
 		for (const Projectile& projectile : projectiles_) {
 			result.projectiles.push_back(
 				ProjectileSnapshot{
-					projectile.bounds()
+					projectile.bounds(),
+					projectile.faction()
 				}
 			);
 		}

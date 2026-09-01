@@ -37,6 +37,7 @@ target_sources(
     src/core/InputCommand.h
     src/core/GameState.h
     src/core/GameplayConfig.h
+    src/core/EnemyKind.h
     src/core/GameSnapshot.h
     src/core/Collision.h
     src/core/Obstacle.h
@@ -339,6 +340,113 @@ if(MSVC)
     )
 endif()
 
+add_executable(
+    Day4EnemyKind
+    exercises/day4_enemy_kind.cpp
+)
+
+target_link_libraries(
+    Day4EnemyKind
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day4EnemyKind
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day4ShooterMovement
+    exercises/day4_shooter_movement.cpp
+)
+
+target_link_libraries(
+    Day4ShooterMovement
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day4ShooterMovement
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day4WaveComposition
+    exercises/day4_wave_composition.cpp
+)
+
+target_link_libraries(
+    Day4WaveComposition
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day4WaveComposition
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day4ShooterWarning
+    exercises/day4_shooter_warning.cpp
+)
+
+target_link_libraries(
+    Day4ShooterWarning
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day4ShooterWarning
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+add_executable(
+    Day4ProjectileFaction
+    exercises/day4_projectile_faction.cpp
+)
+
+target_link_libraries(
+    Day4ProjectileFaction
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day4ProjectileFaction
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day4PlayerInvulnerability
+    exercises/day4_player_invulnerability.cpp
+)
+
+target_link_libraries(
+    Day4PlayerInvulnerability
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day4PlayerInvulnerability
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
 if(MSVC)
     target_compile_options(
         Day1EntityExercise
@@ -394,5 +502,11 @@ if(BUILD_TESTING)
     add_test(NAME Weapon COMMAND Day3Weapon)
     add_test(NAME AimSpread COMMAND Day3AimSpread)
     add_test(NAME AssetManager COMMAND Day3AssetManager)
+    add_test(NAME EnemyKind COMMAND Day4EnemyKind)
+    add_test(NAME ShooterMovement COMMAND Day4ShooterMovement)
+    add_test(NAME WaveComposition COMMAND Day4WaveComposition)
+    add_test(NAME ShooterWarning COMMAND Day4ShooterWarning)
+    add_test(NAME ProjectileFaction COMMAND Day4ProjectileFaction)
+    add_test(NAME PlayerInvulnerability COMMAND Day4PlayerInvulnerability)
     add_test(NAME NeonSiegeSmoke COMMAND NeonSiege --smoke-test)
 endif()

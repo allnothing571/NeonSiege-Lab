@@ -10,7 +10,7 @@ bool nearlyEqual(float first, float second) {
 int main() {
 	neon::Rect worldBounds = { 100.0f,50.0f,200.0f,100.0f };
 	neon::Vec2 playerPosition = { 120.0f,70.0f };
-	neon::Player player = { playerPosition, 20.0f, 100.0f, 3 };
+	neon::Player player = { playerPosition, 20.0f, 100.0f, 3, 0.5f };
 	float dt = 0.5f;
 	neon::Vec2 direction = { 1.0f, 0.0f };
 

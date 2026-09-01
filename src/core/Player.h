@@ -7,8 +7,19 @@ namespace neon {
 
 	class Player {
 	public:
-		Player(Vec2 position, float size, float speed, int health)
-			: position_(position), size_(size), speed_(speed), health_(health)
+		Player(
+			Vec2 position,
+			float size,
+			float speed,
+			int health,
+			float invulnerabilityDuration)
+			: position_(position),
+			size_(size),
+			speed_(speed),
+			health_(health),
+			invulnerabilityDuration_(
+				std::max(0.0f, invulnerabilityDuration)),
+			invulnerabilityRemaining_(0.0f)
 		{
 		}
 
@@ -16,6 +27,14 @@ namespace neon {
 			Vec2 direction,
 			float dt,
 			const Rect& worldBounds) {
+
+			if (dt > 0.0f) {
+				invulnerabilityRemaining_ =
+					std::max(
+						0.0f,
+						invulnerabilityRemaining_ - dt
+					);
+			}
 
 			const float minX = worldBounds.x;
 			const float maxX = worldBounds.x + worldBounds.w - size_;
@@ -70,25 +89,32 @@ namespace neon {
 			};
 		}
 
-		void takeDamage(int damage) {
-			if (damage <= 0) {
-				return;
+		bool takeDamage(int damage) {
+			if (damage <= 0 ||
+				!isAlive() ||
+				isInvulnerable()) {
+				return false;
 			}
 
-			health_ -= damage;
+			health_ = std::max(0, health_ - damage);
+			invulnerabilityRemaining_ =
+				invulnerabilityDuration_;
 
-			if (health_ < 0) {
-				health_ = 0;
-			}
+			return true;
 		}
 
 		bool isAlive() const {
 			return health_ > 0;
 		}
 
+		bool isInvulnerable() const {
+			return invulnerabilityRemaining_ > 0.0f;
+		}
+
 		void reset(Vec2 position, int health) {
 			position_ = position;
 			health_ = health;
+			invulnerabilityRemaining_ = 0.0f;
 		}
 
 		int health() const {
@@ -100,6 +126,8 @@ namespace neon {
 		float size_;
 		float speed_;
 		int health_;
+		float invulnerabilityDuration_;
+		float invulnerabilityRemaining_;
 	};
 
 }

@@ -15,8 +15,7 @@ namespace neon::sdl {
 		assetManager_(assetManager) {
 	}
 
-	void SdlGameRenderer::render(
-		const GameSnapshot& snapshot)const {
+	void SdlGameRenderer::render(const GameSnapshot& snapshot)const {
 
 		const auto drawRectangle =
 			[this](
@@ -106,32 +105,51 @@ namespace neon::sdl {
 		for (const EnemySnapshot& enemy :
 			snapshot.enemies) {
 
+			const bool isShooter =
+				enemy.kind == EnemyKind::Shooter;
+
+			const Uint8 shooterGreen =
+				enemy.warningActive
+				? static_cast<Uint8>(
+					150.0f +
+					105.0f * enemy.warningProgress
+					)
+				: 150;
+
 			drawTextureOrRectangle(
-				TextureId::EnemyChaser,
+				isShooter
+				? TextureId::EnemyShooter
+				: TextureId::EnemyChaser,
 				enemy.bounds,
-				220,
-				60,
-				70
+				isShooter ? 255 : 220,
+				isShooter ? shooterGreen : 60,
+				isShooter ? 40 : 70
 			);
 		}
 
 		drawTextureOrRectangle(
 			TextureId::Player,
 			snapshot.player.bounds,
-			0,
-			220,
+			snapshot.player.invulnerable ? 255 : 0,
+			snapshot.player.invulnerable ? 255 : 220,
 			255
 		);
 
 		for (const ProjectileSnapshot& projectile :
 			snapshot.projectiles) {
 
+			const bool isEnemyProjectile =
+				projectile.faction ==
+				ProjectileFaction::Enemy;
+
 			drawTextureOrRectangle(
-				TextureId::PlayerProjectile,
+				isEnemyProjectile
+				? TextureId::EnemyProjectile
+				: TextureId::PlayerProjectile,
 				projectile.bounds,
-				255,
-				220,
-				80
+				isEnemyProjectile ? 255 : 255,
+				isEnemyProjectile ? 70 : 220,
+				isEnemyProjectile ? 180 : 80
 			);
 		}
 

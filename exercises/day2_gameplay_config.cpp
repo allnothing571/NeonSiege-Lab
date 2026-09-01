@@ -13,11 +13,12 @@ int main() {
 		config.playerStartPosition.y == 246.0f &&
 		config.playerSize == 48.0f &&
 		config.playerSpeed == 240.0f &&
-		config.playerInitialHealth == 3 &&
+		config.playerInitialHealth == 100 &&
 		config.playerProjectileSize == 8.0f &&
 		config.playerProjectileSpeed == 600.0f &&
 		config.playerProjectileSpreadDegrees == 3.0f &&
 		config.playerProjectileDamage == 10 &&
+		config.playerInvulnerabilityDuration == 0.5f &&
 		config.scorePerEnemy == 100 &&
 		config.enemySize == 32.0f &&
 		config.enemyBaseSpeed == 70.0f &&

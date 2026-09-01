@@ -35,6 +35,14 @@ namespace neon {
 					)
 				);
 
+			const int shooterCount =
+				nextWave == 1
+				? 0
+				: std::min(
+					3,
+					enemyCount / 3
+				);
+
 			int spawnedCount = 0;
 
 			for (int index = 0;
@@ -62,11 +70,26 @@ namespace neon {
 						index % 3
 						) * config.enemySpeedStep;
 
+				const EnemyKind kind =
+					spawnedCount < shooterCount
+					? EnemyKind::Shooter
+					: EnemyKind::Chaser;
+
+				const int health =
+					kind == EnemyKind::Shooter
+					? config.shooterHealth
+					: config.enemyHealth;
+
 				enemies.emplace_back(
 					*position,
 					config.enemySize,
 					speed,
-					config.enemyHealth
+					health,
+					kind,
+					config.shooterRetreatDistance,
+					config.shooterApproachDistance,
+					config.shooterWarningDuration,
+					config.shooterFireInterval
 				);
 
 				++spawnedCount;

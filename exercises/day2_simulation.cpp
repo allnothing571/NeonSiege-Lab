@@ -130,7 +130,7 @@ int main() {
 		initialSnapshot.currentWave == 1 &&
 		initialSnapshot.enemies.size() == 3 &&
 		initialSnapshot.projectiles.empty() &&
-		initialSnapshot.player.health == 3 &&
+		initialSnapshot.player.health == 100 &&
 		nearlyEqual(initialBounds.x, 456.0f) &&
 		nearlyEqual(initialBounds.y, 246.0f);
 
@@ -221,7 +221,7 @@ int main() {
 		resetSnapshot.currentWave == 1 &&
 		resetSnapshot.enemies.size() == 3 &&
 		resetSnapshot.projectiles.empty() &&
-		resetSnapshot.player.health == 3 &&
+		resetSnapshot.player.health == 100 &&
 		resetSnapshot.player.alive &&
 		resetSnapshot.player.ammoInMagazine == 12 &&
 		resetSnapshot.player.magazineCapacity == 12 &&

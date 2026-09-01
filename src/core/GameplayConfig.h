@@ -21,12 +21,20 @@ namespace neon {
 
 		float playerSize = 48.0f;
 		float playerSpeed = 240.0f;
-		int playerInitialHealth = 3;
+		int playerInitialHealth = 100;
+		float playerInvulnerabilityDuration = 0.5f;
+
 		int enemyContactDamage = 1;
 		float enemySize = 32.0f;
 		float enemyBaseSpeed = 70.0f;
 		float enemySpeedStep = 10.0f;
 		int enemyHealth = 30;
+
+		float shooterRetreatDistance = 180.0f;
+		float shooterApproachDistance = 320.0f;
+		int shooterHealth = 20;
+		float shooterWarningDuration = 0.3f;
+		float shooterFireInterval = 1.2f;
 
 		int maximumEnemiesPerWave = 12;
 		int spawnMaxAttemptsPerEnemy = 64;
@@ -41,6 +49,13 @@ namespace neon {
 		float playerProjectileSpeed = 600.0f;
 		float playerProjectileSpreadDegrees = 3.0f;
 		int playerProjectileDamage = 10;
+		float playerProjectileLifetime = 5.0f;
+
+		float enemyProjectileSize = 10.0f;
+		float enemyProjectileSpeed = 240.0f;
+		int enemyProjectileDamage = 10;
+		float enemyProjectileLifetime = 5.0f;
+		int maximumEnemyProjectiles = 64;
 
 		int scorePerEnemy = 100;
 	};

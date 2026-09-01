@@ -14,7 +14,15 @@ int main() {
 	float size = 5.0f;
 	float speed = 100.0f;
 
-	neon::Projectile projectile(position, direction, size, speed);
+	neon::Projectile projectile(
+		position,
+		direction,
+		size,
+		speed,
+		neon::ProjectileFaction::Player,
+		10,
+		5.0f
+	);
 
 	projectile.update(0.5f);
 	projectile.update(0.5f);

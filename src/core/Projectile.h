@@ -1,5 +1,6 @@
 #pragma once
 #include "core/Types.h"
+#include "core/ProjectileFaction.h"
 
 namespace neon {
 	class Projectile {
@@ -8,16 +9,36 @@ namespace neon {
 			Vec2 position,
 			Vec2 direction,
 			float size,
-			float speed)
+			float speed,
+			ProjectileFaction faction,
+			int damage,
+			float lifetime)
 			: position_(position),
 			direction_(direction),
 			size_(size),
-			speed_(speed) {
+			speed_(speed),
+			faction_(faction),
+			damage_(
+				damage > 0
+				? damage
+				: 0),
+			remainingLifetime_(lifetime),
+			consumed_(lifetime <= 0.0f) {
 		}
 
 		void update(float dt) {
+			if (consumed_ || dt <= 0.0f) {
+				return;
+			}
+
 			position_.x += direction_.x * speed_ * dt;
 			position_.y += direction_.y * speed_ * dt;
+
+			remainingLifetime_ -= dt;
+
+			if (remainingLifetime_ <= 0.0f) {
+				consumed_ = true;
+			}
 		}
 
 		bool isOutside(const Rect& worldBounds) const {
@@ -40,11 +61,22 @@ namespace neon {
 			return consumed_;
 		}
 
+		ProjectileFaction faction() const {
+			return faction_;
+		}
+
+		int damage() const {
+			return damage_;
+		}
+
 	private:
 		Vec2 position_;
 		Vec2 direction_;
 		float size_;
 		float speed_;
+		ProjectileFaction faction_;
+		int damage_;
+		float remainingLifetime_;
 		bool consumed_ = false;
 	};
 }
