@@ -69,6 +69,8 @@ add_library(
     src/sdl/SdlPaths.cpp
     src/sdl/SdlInput.h
     src/sdl/SdlInput.cpp
+    src/sdl/AssetManager.h
+    src/sdl/AssetManager.cpp
 )
 
 target_include_directories(
@@ -95,6 +97,14 @@ NeonSiege
 src/main.cpp
 src/SaveData.h
 src/SaveData.cpp)
+
+add_custom_command(
+    TARGET NeonSiege
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/assets"
+        "$<TARGET_FILE_DIR:NeonSiege>/assets"
+)
 
 add_executable(
     Day7CollisionRewrite
@@ -311,6 +321,24 @@ if(MSVC)
     )
 endif()
 
+add_executable(
+    Day3AssetManager
+    exercises/day3_asset_manager.cpp
+)
+
+target_link_libraries(
+    Day3AssetManager
+    PRIVATE
+    neon_sdl
+)
+
+if(MSVC)
+    target_compile_options(
+        Day3AssetManager
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
 if(MSVC)
     target_compile_options(
         Day1EntityExercise
@@ -365,5 +393,6 @@ if(BUILD_TESTING)
     add_test(NAME SpawnPlacement COMMAND Day3SpawnPlacement)
     add_test(NAME Weapon COMMAND Day3Weapon)
     add_test(NAME AimSpread COMMAND Day3AimSpread)
+    add_test(NAME AssetManager COMMAND Day3AssetManager)
     add_test(NAME NeonSiegeSmoke COMMAND NeonSiege --smoke-test)
 endif()

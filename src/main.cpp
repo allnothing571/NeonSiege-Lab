@@ -13,6 +13,7 @@
 #include "sdl/SdlGameRenderer.h"
 #include "sdl/SdlInput.h"
 #include "sdl/SdlPaths.h"
+#include "sdl/AssetManager.h"
 
 int main(int argc, char* argv[]) {
 	const bool smokeTest = argc > 1 && std::string_view(argv[1]) == "--smoke-test";
@@ -56,7 +57,12 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	neon::sdl::SdlGameRenderer gameRenderer(renderer);
+	neon::sdl::AssetManager assetManager;
+
+	neon::sdl::SdlGameRenderer gameRenderer(
+		renderer,
+		assetManager
+	);
 
 	neon::sdl::SdlInput sdlInput;
 	neon::Simulation simulation(config);
@@ -217,6 +223,8 @@ int main(int argc, char* argv[]) {
 		!saveData.saveHighScore(highScorePath, highScore)) {
 		std::cerr << "无法保存最高分\n";
 	}
+
+	assetManager.clear();
 
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);

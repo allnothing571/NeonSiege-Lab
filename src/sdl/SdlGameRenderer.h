@@ -7,9 +7,13 @@ namespace neon {
 }
 
 namespace neon::sdl {
+	class AssetManager;
+
 	class SdlGameRenderer {
 	public:
-		explicit SdlGameRenderer(SDL_Renderer* renderer);
+		SdlGameRenderer(SDL_Renderer* renderer,
+			const AssetManager& assetManager
+		);
 
 		void render(
 			const GameSnapshot& snapshot
@@ -17,5 +21,6 @@ namespace neon::sdl {
 
 	private:
 		SDL_Renderer* renderer_;
+		const AssetManager& assetManager_;
 	};
 }//namespace neon::sdl

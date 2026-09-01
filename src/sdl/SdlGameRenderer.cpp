@@ -4,11 +4,15 @@
 #include <cmath>
 
 #include "core/GameSnapshot.h"
+#include "sdl/AssetManager.h"
 
 namespace neon::sdl {
 
-	SdlGameRenderer::SdlGameRenderer(SDL_Renderer* renderer)
-		: renderer_(renderer) {
+	SdlGameRenderer::SdlGameRenderer(
+		SDL_Renderer* renderer,
+		const AssetManager& assetManager)
+		: renderer_(renderer),
+		assetManager_(assetManager) {
 	}
 
 	void SdlGameRenderer::render(
@@ -41,6 +45,42 @@ namespace neon::sdl {
 					);
 			};
 
+		const auto drawTextureOrRectangle =
+			[this, &drawRectangle](
+				TextureId textureId,
+				const Rect& bounds,
+				Uint8 red,
+				Uint8 green,
+				Uint8 blue) {
+
+					SDL_Texture* texture =
+						assetManager_.texture(textureId);
+
+					if (texture != nullptr) {
+						const SDL_FRect destination{
+							bounds.x,
+							bounds.y,
+							bounds.w,
+							bounds.h
+						};
+
+						if (SDL_RenderCopyF(
+							renderer_,
+							texture,
+							nullptr,
+							&destination) == 0) {
+							return;
+						}
+					}
+
+					drawRectangle(
+						bounds,
+						red,
+						green,
+						blue
+					);
+			};
+
 		SDL_SetRenderDrawColor(
 			renderer_,
 			18,
@@ -54,7 +94,8 @@ namespace neon::sdl {
 		for (const ObstacleSnapshot& obstacle :
 			snapshot.obstacles) {
 
-			drawRectangle(
+			drawTextureOrRectangle(
+				TextureId::Obstacle,
 				obstacle.bounds,
 				100,
 				100,
@@ -65,7 +106,8 @@ namespace neon::sdl {
 		for (const EnemySnapshot& enemy :
 			snapshot.enemies) {
 
-			drawRectangle(
+			drawTextureOrRectangle(
+				TextureId::EnemyChaser,
 				enemy.bounds,
 				220,
 				60,
@@ -73,7 +115,8 @@ namespace neon::sdl {
 			);
 		}
 
-		drawRectangle(
+		drawTextureOrRectangle(
+			TextureId::Player,
 			snapshot.player.bounds,
 			0,
 			220,
@@ -83,7 +126,8 @@ namespace neon::sdl {
 		for (const ProjectileSnapshot& projectile :
 			snapshot.projectiles) {
 
-			drawRectangle(
+			drawTextureOrRectangle(
+				TextureId::PlayerProjectile,
 				projectile.bounds,
 				255,
 				220,
