@@ -22,7 +22,8 @@ namespace neon {
 			std::mt19937& randomEngine,
 			const GameplayConfig& config,
 			const Rect& playerBounds,
-			const std::vector<Obstacle>& obstacles) {
+			const std::vector<Obstacle>& obstacles,
+			EntityId& nextEntityId) {
 
 			const int nextWave = currentWave_ + 1;
 
@@ -89,7 +90,8 @@ namespace neon {
 					config.shooterRetreatDistance,
 					config.shooterApproachDistance,
 					config.shooterWarningDuration,
-					config.shooterFireInterval
+					config.shooterFireInterval,
+					nextEntityId++
 				);
 
 				++spawnedCount;

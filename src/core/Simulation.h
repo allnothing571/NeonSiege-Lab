@@ -13,6 +13,8 @@
 #include "core/Weapon.h"
 #include "core/GameSnapshot.h"
 #include "core/Obstacle.h"
+#include "core/GameEvent.h"
+#include "core/ReplayFrame.h"
 
 namespace neon {
 
@@ -33,6 +35,11 @@ namespace neon {
 
 		GameState state() const;
 
+		std::vector<GameEvent> consumeEvents();
+
+		std::uint64_t tick() const;
+		std::vector<ReplayFrame> consumeRecordedInputs();
+
 	private:
 		GameplayConfig config_;
 		Player player_;
@@ -46,5 +53,13 @@ namespace neon {
 
 		GameState state_ = GameState::Playing;
 		int score_ = 0;
+
+		void recordEvent(GameEvent event);
+
+		std::uint64_t tick_ = 0;
+		std::vector<GameEvent> events_{};
+		EntityId nextEntityId_ = 2;
+
+		std::vector<ReplayFrame> recorderInputs_{};
 	};
 }

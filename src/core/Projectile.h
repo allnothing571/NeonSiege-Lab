@@ -1,6 +1,8 @@
 #pragma once
+
 #include "core/Types.h"
 #include "core/ProjectileFaction.h"
+#include "core/EntityId.h"
 
 namespace neon {
 	class Projectile {
@@ -12,8 +14,10 @@ namespace neon {
 			float speed,
 			ProjectileFaction faction,
 			int damage,
-			float lifetime)
-			: position_(position),
+			float lifetime,
+			EntityId id = invalidEntityId)
+			: id_(id),
+			position_(position),
 			direction_(direction),
 			size_(size),
 			speed_(speed),
@@ -69,6 +73,10 @@ namespace neon {
 			return damage_;
 		}
 
+		EntityId id() const {
+			return id_;
+		}
+
 	private:
 		Vec2 position_;
 		Vec2 direction_;
@@ -78,5 +86,6 @@ namespace neon {
 		int damage_;
 		float remainingLifetime_;
 		bool consumed_ = false;
+		EntityId id_;
 	};
 }

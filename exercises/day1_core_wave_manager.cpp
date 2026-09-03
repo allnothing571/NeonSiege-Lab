@@ -26,6 +26,7 @@ int main() {
 	std::vector<neon::Enemy> enemies;
 	neon::WaveManager waveManager;
 	std::mt19937 randomEngine{ config.randomSeed };
+	neon::EntityId nextEntityId = 1;
 
 	const bool initialStatePassed =
 		waveManager.currentWave() == 0 &&
@@ -37,7 +38,8 @@ int main() {
 			randomEngine,
 			config,
 			playerBounds,
-			obstacles
+			obstacles,
+			nextEntityId
 		);
 
 	const neon::Rect firstPosition =
@@ -56,7 +58,8 @@ int main() {
 			randomEngine,
 			config,
 			playerBounds,
-			obstacles
+			obstacles,
+			nextEntityId
 		);
 
 	const bool secondWavePassed =
@@ -72,7 +75,8 @@ int main() {
 			randomEngine,
 			config,
 			playerBounds,
-			obstacles
+			obstacles,
+			nextEntityId
 		);
 
 	const bool thirdWavePassed =
@@ -90,7 +94,8 @@ int main() {
 			randomEngine,
 			config,
 			playerBounds,
-			obstacles
+			obstacles,
+			nextEntityId
 		);
 
 	const neon::Rect resetFirstPosition =

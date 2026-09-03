@@ -16,7 +16,8 @@ namespace neon {
 			config_.playerSize,
 			config_.playerSpeed,
 			config_.playerInitialHealth,
-			config_.playerInvulnerabilityDuration
+			config_.playerInvulnerabilityDuration,
+			playerEntityId
 		),
 		weapon_(
 			config_.magazineCapacity,
@@ -28,6 +29,11 @@ namespace neon {
 	}
 
 	void Simulation::reset() {
+		events_.clear();
+		recorderInputs_.clear();
+		tick_ = 0;
+		nextEntityId_ = playerEntityId + 1;
+
 		randomEngine_.seed(config_.randomSeed);
 
 		player_.reset(
@@ -53,13 +59,26 @@ namespace neon {
 		);
 
 		waveManager_.reset();
-		waveManager_.spawnNextWave(
-			enemies_,
-			randomEngine_,
-			config_,
-			player_.bounds(),
-			obstacles_
-		);
+
+		const int spawned =
+			waveManager_.spawnNextWave(
+				enemies_,
+				randomEngine_,
+				config_,
+				player_.bounds(),
+				obstacles_,
+				nextEntityId_
+			);
+
+		if (spawned > 0) {
+			GameEvent event{};
+			event.type =
+				GameEventType::WaveStarted;
+			event.value =
+				waveManager_.currentWave();
+
+			recordEvent(event);
+		}
 
 		state_ = GameState::Playing;
 		score_ = 0;
@@ -75,7 +94,23 @@ namespace neon {
 			return;
 		}
 
+		if (fixedDt <= 0.0f) {
+			return;
+		}
+
+		++tick_;
+
+		recorderInputs_.push_back(
+			ReplayFrame{
+				tick_,
+				command
+			}
+		);
+
 		if (command.pausePressed) {
+			const GameState previousState =
+				state_;
+
 			if (state_ == GameState::Playing) {
 				state_ = GameState::Paused;
 			}
@@ -84,19 +119,82 @@ namespace neon {
 				state_ = GameState::Playing;
 			}
 
+			if (state_ != previousState) {
+				GameEvent event{};
+				event.type =
+					GameEventType::GameStateChanged;
+				event.value =
+					static_cast<int>(state_);
+
+				recordEvent(event);
+			}
+
 			return;
 		}
 
-		if (state_ != GameState::Playing ||
-			fixedDt <= 0.0f) {
+		if (state_ != GameState::Playing) {
 			return;
 		}
+
+		const bool wasReloading =
+			weapon_.isReloading();
+
+		const int ammoBeforeReload =
+			weapon_.ammoInMagazine();
+
+		const bool reloadRequested =
+			command.reloadPressed &&
+			ammoBeforeReload <
+			weapon_.magazineCapacity();
 
 		weapon_.update(
 			fixedDt,
 			command.fireHeld,
 			command.reloadPressed
 		);
+
+		const bool isReloadingNow =
+			weapon_.isReloading();
+
+		if (!wasReloading &&
+			reloadRequested) {
+			GameEvent event{};
+			event.type =
+				GameEventType::ReloadStarted;
+			event.sourceId =
+				player_.id();
+			event.sourceKind =
+				GameEntityKind::Player;
+			event.value =
+				ammoBeforeReload;
+			event.position =
+				player_.center();
+
+			recordEvent(event);
+		}
+
+		const bool reloadCompleted =
+			(wasReloading &&
+				!isReloadingNow) ||
+			(reloadRequested &&
+				!wasReloading &&
+				!isReloadingNow &&
+				config_.reloadDuration <= 0.0f);
+		if (reloadCompleted) {
+			GameEvent event{};
+			event.type =
+				GameEventType::ReloadCompleted;
+			event.sourceId =
+				player_.id();
+			event.sourceKind =
+				GameEntityKind::Player;
+			event.value =
+				weapon_.ammoInMagazine();
+			event.position =
+				player_.center();
+
+			recordEvent(event);
+		}
 
 		aimPosition_ = command.aimPosition;
 
@@ -227,8 +325,21 @@ namespace neon {
 							config_.enemyProjectileSpeed,
 							ProjectileFaction::Enemy,
 							config_.enemyProjectileDamage,
-							config_.enemyProjectileLifetime
+							config_.enemyProjectileLifetime,
+							nextEntityId_++
 						);
+
+						GameEvent event{};
+						event.type =
+							GameEventType::EnemyShot;
+						event.sourceId =
+							enemy.id();
+						event.sourceKind =
+							GameEntityKind::Enemy;
+						event.position =
+							enemyCenter;
+
+						recordEvent(event);
 
 						++activeEnemyProjectileCount;
 					}
@@ -239,11 +350,44 @@ namespace neon {
 				player_.hitbox(),
 				enemy.hitbox())) {
 
-				player_.takeDamage(
-					config_.enemyContactDamage
-				);
+				const bool damageApplied =
+					player_.takeDamage(
+						config_.enemyContactDamage
+					);
+
+				if (damageApplied) {
+					GameEvent damageEvent{};
+					damageEvent.type =
+						GameEventType::DamageApplied;
+					damageEvent.sourceId =
+						enemy.id();
+					damageEvent.sourceKind =
+						GameEntityKind::Enemy;
+					damageEvent.targetId =
+						player_.id();
+					damageEvent.targetKind =
+						GameEntityKind::Player;
+					damageEvent.value =
+						config_.enemyContactDamage;
+					damageEvent.position =
+						player_.center();
+
+					recordEvent(damageEvent);
+				}
 
 				enemy.defeat();
+
+				GameEvent deathEvent{};
+				deathEvent.type =
+					GameEventType::EntityDied;
+				deathEvent.sourceId =
+					player_.id();
+				deathEvent.sourceKind =
+					GameEntityKind::Enemy;
+				deathEvent.position =
+					enemy.center();
+
+				recordEvent(deathEvent);
 			}
 		}
 
@@ -286,13 +430,64 @@ namespace neon {
 				projectile.bounds(),
 				player_.hitbox())) {
 
-				// A hit enemy projectile is always consumed.
-				projectile.consume();
+				const bool wasAlive =
+					player_.isAlive();
 
-				// Player decides whether the damage is applied.
-				player_.takeDamage(
-					projectile.damage()
-				);
+				GameEvent hitEvent{};
+				hitEvent.type =
+					GameEventType::ProjectileHit;
+				hitEvent.sourceId =
+					projectile.id();
+				hitEvent.sourceKind =
+					GameEntityKind::Projectile;
+				hitEvent.targetId =
+					player_.id();
+				hitEvent.targetKind =
+					GameEntityKind::Player;
+				hitEvent.value =
+					projectile.damage();
+				hitEvent.position =
+					player_.center();
+
+				projectile.consume();
+				recordEvent(hitEvent);
+
+				const bool damageApplied =
+					player_.takeDamage(
+						projectile.damage()
+					);
+
+				if (damageApplied) {
+					GameEvent damageEvent{};
+					damageEvent.type =
+						GameEventType::DamageApplied;
+					damageEvent.sourceKind =
+						GameEntityKind::Projectile;
+					damageEvent.targetKind =
+						GameEntityKind::Player;
+					damageEvent.value =
+						projectile.damage();
+					damageEvent.position =
+						player_.center();
+
+					recordEvent(damageEvent);
+				}
+
+				if (wasAlive &&
+					!player_.isAlive()) {
+
+					GameEvent deathEvent{};
+					deathEvent.type =
+						GameEventType::EntityDied;
+					deathEvent.sourceId =
+						player_.id();
+					deathEvent.sourceKind =
+						GameEntityKind::Player;
+					deathEvent.position =
+						player_.center();
+
+					recordEvent(deathEvent);
+				}
 			}
 		}
 
@@ -323,10 +518,56 @@ namespace neon {
 						projectile.damage()
 					);
 
+					GameEvent hitEvent{};
+					hitEvent.type =
+						GameEventType::ProjectileHit;
+					hitEvent.sourceId =
+						projectile.id();
+					hitEvent.sourceKind =
+						GameEntityKind::Projectile;
+					hitEvent.targetId =
+						enemy.id();
+					hitEvent.targetKind =
+						GameEntityKind::Enemy;
+					hitEvent.value =
+						projectile.damage();
+					hitEvent.position =
+						enemy.center();
+
+					recordEvent(hitEvent);
+
+					if (projectile.damage() > 0) {
+						GameEvent damageEvent{};
+						damageEvent.type =
+							GameEventType::DamageApplied;
+						damageEvent.sourceKind =
+							GameEntityKind::Projectile;
+						damageEvent.targetKind =
+							GameEntityKind::Enemy;
+						damageEvent.value =
+							projectile.damage();
+						damageEvent.position =
+							enemy.center();
+
+						recordEvent(damageEvent);
+					}
+
 					projectile.consume();
 					if (!enemy.isAlive()) {
 						score_ +=
 							config_.scorePerEnemy;
+
+						GameEvent deathEvent{};
+						deathEvent.type =
+							GameEventType::EntityDied;
+						deathEvent.sourceId =
+							enemy.id();
+						deathEvent.sourceKind =
+							GameEntityKind::Enemy;
+						deathEvent.position =
+							enemy.center();
+
+						recordEvent(deathEvent);
 					}
 
 					break;
@@ -334,8 +575,18 @@ namespace neon {
 			}
 		}
 
-		if (!player_.isAlive()) {
+		if (!player_.isAlive() &&
+			state_ != GameState::Gameover) {
+
 			state_ = GameState::Gameover;
+
+			GameEvent event{};
+			event.type =
+				GameEventType::GameStateChanged;
+			event.value =
+				static_cast<int>(state_);
+
+			recordEvent(event);
 		}
 
 		enemies_.erase(
@@ -351,13 +602,32 @@ namespace neon {
 
 		if (state_ == GameState::Playing &&
 			enemies_.empty()) {
-			waveManager_.spawnNextWave(
-				enemies_,
-				randomEngine_,
-				config_,
-				player_.bounds(),
-				obstacles_
-			);
+
+			GameEvent completedEvent;
+			completedEvent.type =
+				GameEventType::WaveCompleted;
+			completedEvent.value =
+				waveManager_.currentWave();
+
+			const int spawned =
+				waveManager_.spawnNextWave(
+					enemies_,
+					randomEngine_,
+					config_,
+					player_.bounds(),
+					obstacles_,
+					nextEntityId_
+				);
+
+			if (spawned > 0) {
+				GameEvent startedEvent{};
+				startedEvent.type =
+					GameEventType::WaveStarted;
+				startedEvent.value =
+					waveManager_.currentWave();
+
+				recordEvent(startedEvent);
+			}
 		}
 
 		projectiles_.erase(
@@ -427,8 +697,20 @@ namespace neon {
 						config_.playerProjectileSpeed,
 						ProjectileFaction::Player,
 						config_.playerProjectileDamage,
-						config_.playerProjectileLifetime
+						config_.playerProjectileLifetime,
+						nextEntityId_++
 					);
+
+					GameEvent event{};
+					event.type =
+						GameEventType::PlayerShot;
+					event.sourceKind =
+						GameEntityKind::Player;
+					event.sourceId = player_.id();
+					event.position =
+						playerCenter;
+
+					recordEvent(event);
 				}
 			}
 		}
@@ -503,6 +785,29 @@ namespace neon {
 
 	GameState Simulation::state() const {
 		return state_;
+	}
+
+	std::vector<GameEvent> Simulation::consumeEvents() {
+		std::vector<GameEvent> result;
+		result.swap(events_);
+		return result;
+	}
+
+	std::vector<ReplayFrame> Simulation::consumeRecordedInputs() {
+		std::vector<ReplayFrame> result;
+		result.swap(recorderInputs_);
+		return result;
+	}
+
+	std::uint64_t Simulation::tick() const {
+		return tick_;
+	}
+
+	void Simulation::recordEvent(
+		GameEvent event) {
+
+		event.tick = tick_;
+		events_.push_back(event);
 	}
 
 }//namespace neon

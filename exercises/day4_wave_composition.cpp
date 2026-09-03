@@ -38,6 +38,7 @@ int main() {
 	std::mt19937 randomEngine{
 		config.randomSeed
 	};
+	neon::EntityId nextEntityId = 1;
 
 	bool firstWavePassed = false;
 	bool secondWavePassed = false;
@@ -57,7 +58,8 @@ int main() {
 				randomEngine,
 				config,
 				playerBounds,
-				obstacles
+				obstacles,
+				nextEntityId
 			);
 
 		const int shooters =

@@ -39,6 +39,11 @@ target_sources(
     src/core/GameplayConfig.h
     src/core/EnemyKind.h
     src/core/GameSnapshot.h
+    src/core/EntityId.h
+    src/core/GameEvent.h
+    src/core/ReplayFrame.h
+    src/core/ReplayTape.h
+    src/core/ReplayTape.cpp
     src/core/Collision.h
     src/core/Obstacle.h
     src/core/LineOfSight.h
@@ -447,6 +452,114 @@ if(MSVC)
     )
 endif()
 
+add_executable(
+    Day5GameEvent
+    exercises/day5_game_event.cpp
+)
+
+target_link_libraries(
+    Day5GameEvent
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day5GameEvent
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day5SimulationEvents
+    exercises/day5_simulation_events.cpp
+)
+
+target_link_libraries(
+    Day5SimulationEvents
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day5SimulationEvents
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day5EntityId
+    exercises/day5_entity_id.cpp
+)
+
+target_link_libraries(
+    Day5EntityId
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day5EntityId
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day5ReplayFrames
+    exercises/day5_replay_frames.cpp
+)
+
+target_link_libraries(
+    Day5ReplayFrames
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day5ReplayFrames
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day5ReplayTape
+    exercises/day5_replay_tape.cpp
+)
+
+target_link_libraries(
+    Day5ReplayTape
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day5ReplayTape
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day5ReloadEvents
+    exercises/day5_reload_events.cpp
+)
+
+target_link_libraries(
+    Day5ReloadEvents
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day5ReloadEvents
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
 if(MSVC)
     target_compile_options(
         Day1EntityExercise
@@ -508,5 +621,11 @@ if(BUILD_TESTING)
     add_test(NAME ShooterWarning COMMAND Day4ShooterWarning)
     add_test(NAME ProjectileFaction COMMAND Day4ProjectileFaction)
     add_test(NAME PlayerInvulnerability COMMAND Day4PlayerInvulnerability)
+    add_test(NAME GameEvent COMMAND Day5GameEvent)
+    add_test(NAME SimulationEvents COMMAND Day5SimulationEvents)
+    add_test(NAME EntityId COMMAND Day5EntityId)
+    add_test(NAME ReplayFrames COMMAND Day5ReplayFrames)
+    add_test(NAME ReplayTape COMMAND Day5ReplayTape)
+    add_test(NAME ReloadEvents COMMAND Day5ReloadEvents)
     add_test(NAME NeonSiegeSmoke COMMAND NeonSiege --smoke-test)
 endif()

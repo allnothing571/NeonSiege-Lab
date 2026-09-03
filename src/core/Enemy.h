@@ -3,6 +3,7 @@
 #include <cmath>
 #include "core/Types.h"
 #include "core/EnemyKind.h"
+#include "core/EntityId.h"
 
 namespace neon {
 
@@ -17,8 +18,10 @@ namespace neon {
 			float shooterRetreatDistance = 180.0f,
 			float shooterApproachDistance = 320.0f,
 			float shooterWarningDuration = 0.3f,
-			float shooterFireInterval = 1.2f)
-			: position_(position),
+			float shooterFireInterval = 1.2f,
+			EntityId id = invalidEntityId)
+			: id_(id),
+			position_(position),
 			size_(size),
 			speed_(speed),
 			health_(health),
@@ -169,6 +172,10 @@ namespace neon {
 			return kind_;
 		}
 
+		EntityId id() const {
+			return id_;
+		}
+
 		void defeat() {
 			health_ = 0;
 		}
@@ -198,6 +205,7 @@ namespace neon {
 		float speed_;
 		int health_;
 		EnemyKind kind_;
+		EntityId id_;
 		float shooterRetreatDistance_;
 		float shooterApproachDistance_;
 

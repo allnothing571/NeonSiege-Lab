@@ -2,6 +2,7 @@
 #include <cmath>
 #include <algorithm>
 #include "core/Types.h"
+#include "core/EntityId.h"
 
 namespace neon {
 
@@ -12,8 +13,10 @@ namespace neon {
 			float size,
 			float speed,
 			int health,
-			float invulnerabilityDuration)
-			: position_(position),
+			float invulnerabilityDuration,
+			EntityId id = playerEntityId)
+			: id_(id),
+			position_(position),
 			size_(size),
 			speed_(speed),
 			health_(health),
@@ -74,6 +77,10 @@ namespace neon {
 			return Vec2{ position_.x + size_ / 2.0f, position_.y + size_ / 2.0f };
 		}
 
+		EntityId id() const {
+			return id_;
+		}
+
 		Rect bounds() const {
 			return Rect{ position_.x, position_.y, size_, size_ };
 		}
@@ -128,6 +135,7 @@ namespace neon {
 		int health_;
 		float invulnerabilityDuration_;
 		float invulnerabilityRemaining_;
+		EntityId id_;
 	};
 
 }
