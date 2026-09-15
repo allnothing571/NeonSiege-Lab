@@ -54,18 +54,24 @@ int main() {
 		simulation.snapshot();
 
 	const bool simulationSnapshotPassed =
-		snapshot.obstacles.size() == 2 &&
-		snapshot.obstacles[0].bounds.w == 240.0f &&
-		snapshot.obstacles[0].bounds.h == 32.0f &&
-		snapshot.obstacles[1].bounds.w == 180.0f &&
-		snapshot.obstacles[1].bounds.h == 40.0f &&
-		snapshot.obstacles[1].bounds.x == 620.0f &&
-		snapshot.obstacles[1].bounds.y == 320.0f;
+		snapshot.obstacles.size() == 5 &&
+		snapshot.obstacles[0].bounds.x == 180.0f &&
+		snapshot.obstacles[0].bounds.y == 120.0f &&
+		snapshot.obstacles[0].bounds.w == 140.0f &&
+		snapshot.obstacles[0].bounds.h == 28.0f &&
+		snapshot.obstacles[1].bounds.x == 640.0f &&
+		snapshot.obstacles[1].bounds.y == 120.0f &&
+		snapshot.obstacles[1].bounds.w == 140.0f &&
+		snapshot.obstacles[1].bounds.h == 28.0f &&
+		snapshot.obstacles[2].bounds.x == 390.0f &&
+		snapshot.obstacles[2].bounds.y == 360.0f &&
+		snapshot.obstacles[2].bounds.w == 180.0f &&
+		snapshot.obstacles[2].bounds.h == 30.0f;
 
 	neon::GameplayConfig slideConfig{};
 	slideConfig.playerStartPosition = {
-		260.0f,
-		212.0f
+		318.0f,
+		148.0f
 	};
 
 	neon::Simulation slideSimulation{
@@ -74,7 +80,7 @@ int main() {
 
 	neon::InputCommand slideCommand{};
 	slideCommand.movement = {
-		1.0f,
+		0.0f,
 		-1.0f
 	};
 
@@ -94,11 +100,11 @@ int main() {
 	const bool slideMovementPassed =
 		nearlyEqual(
 			slideSnapshot.player.bounds.x,
-			300.0f
+			318.0f
 		) &&
 		nearlyEqual(
 			slideSnapshot.player.bounds.y,
-			212.0f
+		148.0f
 		) &&
 		!neon::intersects(
 			slideSnapshot.player.bounds,

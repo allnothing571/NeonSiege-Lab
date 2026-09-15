@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cmath>
 #include "core/Enemy.h"
+#include "core/GameplayConfig.h"
 
 bool nearlyEqual(float first, float second) {
 	constexpr float epsilon = 0.001f;
@@ -8,6 +9,7 @@ bool nearlyEqual(float first, float second) {
 }
 
 int main() {
+	const neon::GameplayConfig config{};
 	neon::Vec2 position{ 0.0f, 0.0f };
 	neon::Vec2 target{ 35.0f, 5.0f };
 	float size = 10.0f;
@@ -17,7 +19,7 @@ int main() {
 
 	neon::Enemy enemy1(position, size, speed, health);
 
-	enemy1.update(target, dt);
+	enemy1.update(target, dt, config.worldBounds);
 
 	const bool movementPassed =
 		nearlyEqual(enemy1.bounds().x, 20.0f) &&
@@ -26,7 +28,7 @@ int main() {
 	std::cout << "bounds().x: " << enemy1.bounds().x << ' '
 		<< "bounds().y: " << enemy1.bounds().y << '\n';
 
-	enemy1.update(enemy1.center(), dt);
+	enemy1.update(enemy1.center(), dt, config.worldBounds);
 
 	const bool zeroDirectionPassed =
 		nearlyEqual(enemy1.bounds().x, 20.0f) &&

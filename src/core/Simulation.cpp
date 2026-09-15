@@ -25,14 +25,23 @@ namespace neon {
 			config_.reloadDuration
 		),
 		randomEngine_(config_.randomSeed) {
+		config_.maximumWaves =
+			std::max(1, config_.maximumWaves);
+		config_.waveIntermissionDuration =
+			std::max(0.0f, config_.waveIntermissionDuration);
 		reset();
 	}
 
 	void Simulation::reset() {
 		events_.clear();
+		presentationEvents_.clear();
 		recorderInputs_.clear();
 		tick_ = 0;
 		nextEntityId_ = playerEntityId + 1;
+		state_ = GameState::Playing;
+		pausedFromState_ = GameState::Playing;
+		intermissionRemaining_ = 0.0f;
+		score_ = 0;
 
 		randomEngine_.seed(config_.randomSeed);
 
@@ -51,37 +60,27 @@ namespace neon {
 		obstacles_.clear();
 
 		obstacles_.emplace_back(
-			Rect{ 220.0f, 180.0f, 240.0f, 32.0f }
+			Rect{ 180.0f, 120.0f, 140.0f, 28.0f }
 		);
 
 		obstacles_.emplace_back(
-			Rect{ 620.0f, 320.0f, 180.0f, 40.0f }
+			Rect{ 640.0f, 120.0f, 140.0f, 28.0f }
+		);
+
+		obstacles_.emplace_back(
+			Rect{ 390.0f, 360.0f, 180.0f, 30.0f }
+		);
+
+		obstacles_.emplace_back(
+			Rect{ 90.0f, 370.0f, 90.0f, 26.0f }
+		);
+
+		obstacles_.emplace_back(
+			Rect{ 780.0f, 370.0f, 90.0f, 26.0f }
 		);
 
 		waveManager_.reset();
-
-		const int spawned =
-			waveManager_.spawnNextWave(
-				enemies_,
-				randomEngine_,
-				config_,
-				player_.bounds(),
-				obstacles_,
-				nextEntityId_
-			);
-
-		if (spawned > 0) {
-			GameEvent event{};
-			event.type =
-				GameEventType::WaveStarted;
-			event.value =
-				waveManager_.currentWave();
-
-			recordEvent(event);
-		}
-
-		state_ = GameState::Playing;
-		score_ = 0;
+		startNextWave();
 	}
 
 	void Simulation::step(
@@ -89,7 +88,8 @@ namespace neon {
 		float fixedDt) {
 
 		if (command.restartPressed &&
-			state_ == GameState::Gameover) {
+			(state_ == GameState::Gameover ||
+				state_ == GameState::Victory)) {
 			reset();
 			return;
 		}
@@ -111,12 +111,14 @@ namespace neon {
 			const GameState previousState =
 				state_;
 
-			if (state_ == GameState::Playing) {
+			if (state_ == GameState::Playing ||
+				state_ == GameState::Intermission) {
+				pausedFromState_ = state_;
 				state_ = GameState::Paused;
 			}
 
 			else if (state_ == GameState::Paused) {
-				state_ = GameState::Playing;
+				state_ = pausedFromState_;
 			}
 
 			if (state_ != previousState) {
@@ -132,20 +134,38 @@ namespace neon {
 			return;
 		}
 
+		if (state_ == GameState::Intermission) {
+			intermissionRemaining_ =
+				std::max(
+					0.0f,
+					intermissionRemaining_ - fixedDt
+				);
+
+			if (intermissionRemaining_ <= 0.0f) {
+				if (startNextWave()) {
+					state_ = GameState::Playing;
+					GameEvent stateEvent{};
+					stateEvent.type =
+						GameEventType::GameStateChanged;
+					stateEvent.value =
+						static_cast<int>(state_);
+					recordEvent(stateEvent);
+				}
+				else if (config_.waveIntermissionDuration > 0.0f) {
+					intermissionRemaining_ =
+						config_.waveIntermissionDuration;
+				}
+			}
+
+			return;
+		}
+
 		if (state_ != GameState::Playing) {
 			return;
 		}
 
-		const bool wasReloading =
-			weapon_.isReloading();
-
 		const int ammoBeforeReload =
 			weapon_.ammoInMagazine();
-
-		const bool reloadRequested =
-			command.reloadPressed &&
-			ammoBeforeReload <
-			weapon_.magazineCapacity();
 
 		weapon_.update(
 			fixedDt,
@@ -153,47 +173,12 @@ namespace neon {
 			command.reloadPressed
 		);
 
-		const bool isReloadingNow =
-			weapon_.isReloading();
-
-		if (!wasReloading &&
-			reloadRequested) {
-			GameEvent event{};
-			event.type =
-				GameEventType::ReloadStarted;
-			event.sourceId =
-				player_.id();
-			event.sourceKind =
-				GameEntityKind::Player;
-			event.value =
-				ammoBeforeReload;
-			event.position =
-				player_.center();
-
-			recordEvent(event);
+		if (weapon_.reloadStartedThisUpdate()) {
+			recordReloadStarted(ammoBeforeReload);
 		}
 
-		const bool reloadCompleted =
-			(wasReloading &&
-				!isReloadingNow) ||
-			(reloadRequested &&
-				!wasReloading &&
-				!isReloadingNow &&
-				config_.reloadDuration <= 0.0f);
-		if (reloadCompleted) {
-			GameEvent event{};
-			event.type =
-				GameEventType::ReloadCompleted;
-			event.sourceId =
-				player_.id();
-			event.sourceKind =
-				GameEntityKind::Player;
-			event.value =
-				weapon_.ammoInMagazine();
-			event.position =
-				player_.center();
-
-			recordEvent(event);
+		if (weapon_.reloadCompletedThisUpdate()) {
+			recordReloadCompleted();
 		}
 
 		aimPosition_ = command.aimPosition;
@@ -276,7 +261,9 @@ namespace neon {
 
 			enemy.update(
 				player_.center(),
-				fixedDt
+				fixedDt,
+				config_.worldBounds,
+				obstacles_
 			);
 
 			if (enemy.kind() == EnemyKind::Shooter) {
@@ -373,6 +360,19 @@ namespace neon {
 						player_.center();
 
 					recordEvent(damageEvent);
+
+					PresentationEvent presentationEvent{};
+					presentationEvent.type =
+						PresentationEventType::PlayerDamaged;
+					presentationEvent.sourceId =
+						enemy.id();
+					presentationEvent.targetId =
+						player_.id();
+					presentationEvent.value =
+						config_.enemyContactDamage;
+					presentationEvent.position =
+						player_.center();
+					recordPresentationEvent(presentationEvent);
 				}
 
 				enemy.defeat();
@@ -381,13 +381,22 @@ namespace neon {
 				deathEvent.type =
 					GameEventType::EntityDied;
 				deathEvent.sourceId =
-					player_.id();
+					enemy.id();
 				deathEvent.sourceKind =
 					GameEntityKind::Enemy;
 				deathEvent.position =
 					enemy.center();
 
 				recordEvent(deathEvent);
+
+				PresentationEvent presentationEvent{};
+				presentationEvent.type =
+					PresentationEventType::EnemyDied;
+				presentationEvent.sourceId =
+					enemy.id();
+				presentationEvent.position =
+					enemy.center();
+				recordPresentationEvent(presentationEvent);
 			}
 		}
 
@@ -414,6 +423,18 @@ namespace neon {
 				);
 
 			if (hitObstacle) {
+				PresentationEvent presentationEvent{};
+				presentationEvent.type =
+					PresentationEventType::ProjectileHit;
+				presentationEvent.sourceId =
+					projectile.id();
+				presentationEvent.position = Vec2{
+					projectile.bounds().x +
+						projectile.bounds().w / 2.0f,
+					projectile.bounds().y +
+						projectile.bounds().h / 2.0f
+				};
+				recordPresentationEvent(presentationEvent);
 				projectile.consume();
 			}
 		}
@@ -452,6 +473,19 @@ namespace neon {
 				projectile.consume();
 				recordEvent(hitEvent);
 
+				PresentationEvent hitPresentation{};
+				hitPresentation.type =
+					PresentationEventType::ProjectileHit;
+				hitPresentation.sourceId =
+					projectile.id();
+				hitPresentation.targetId =
+					player_.id();
+				hitPresentation.value =
+					projectile.damage();
+				hitPresentation.position =
+					player_.center();
+				recordPresentationEvent(hitPresentation);
+
 				const bool damageApplied =
 					player_.takeDamage(
 						projectile.damage()
@@ -463,6 +497,10 @@ namespace neon {
 						GameEventType::DamageApplied;
 					damageEvent.sourceKind =
 						GameEntityKind::Projectile;
+					damageEvent.sourceId =
+						projectile.id();
+					damageEvent.targetKind =
+						GameEntityKind::Player;
 					damageEvent.targetKind =
 						GameEntityKind::Player;
 					damageEvent.value =
@@ -471,6 +509,19 @@ namespace neon {
 						player_.center();
 
 					recordEvent(damageEvent);
+
+					PresentationEvent damagePresentation{};
+					damagePresentation.type =
+						PresentationEventType::PlayerDamaged;
+					damagePresentation.sourceId =
+						projectile.id();
+					damagePresentation.targetId =
+						player_.id();
+					damagePresentation.value =
+						projectile.damage();
+					damagePresentation.position =
+						player_.center();
+					recordPresentationEvent(damagePresentation);
 				}
 
 				if (wasAlive &&
@@ -536,20 +587,50 @@ namespace neon {
 
 					recordEvent(hitEvent);
 
+					PresentationEvent hitPresentation{};
+					hitPresentation.type =
+						PresentationEventType::ProjectileHit;
+					hitPresentation.sourceId =
+						projectile.id();
+					hitPresentation.targetId =
+						enemy.id();
+					hitPresentation.value =
+						projectile.damage();
+					hitPresentation.position =
+						enemy.center();
+					recordPresentationEvent(hitPresentation);
+
 					if (projectile.damage() > 0) {
 						GameEvent damageEvent{};
 						damageEvent.type =
 							GameEventType::DamageApplied;
 						damageEvent.sourceKind =
 							GameEntityKind::Projectile;
+						damageEvent.sourceId =
+							projectile.id();
 						damageEvent.targetKind =
 							GameEntityKind::Enemy;
+						damageEvent.targetId =
+							enemy.id();
 						damageEvent.value =
 							projectile.damage();
 						damageEvent.position =
 							enemy.center();
 
 						recordEvent(damageEvent);
+
+						PresentationEvent damagePresentation{};
+						damagePresentation.type =
+							PresentationEventType::EnemyDamaged;
+						damagePresentation.sourceId =
+							projectile.id();
+						damagePresentation.targetId =
+							enemy.id();
+						damagePresentation.value =
+							projectile.damage();
+						damagePresentation.position =
+							enemy.center();
+						recordPresentationEvent(damagePresentation);
 					}
 
 					projectile.consume();
@@ -568,6 +649,17 @@ namespace neon {
 							enemy.center();
 
 						recordEvent(deathEvent);
+
+						PresentationEvent deathPresentation{};
+						deathPresentation.type =
+							PresentationEventType::EnemyDied;
+						deathPresentation.sourceId =
+							enemy.id();
+						deathPresentation.value =
+							config_.scorePerEnemy;
+						deathPresentation.position =
+							enemy.center();
+						recordPresentationEvent(deathPresentation);
 					}
 
 					break;
@@ -601,32 +693,52 @@ namespace neon {
 		);
 
 		if (state_ == GameState::Playing &&
+			waveManager_.currentWave() > 0 &&
 			enemies_.empty()) {
 
-			GameEvent completedEvent;
+			GameEvent completedEvent{};
 			completedEvent.type =
 				GameEventType::WaveCompleted;
 			completedEvent.value =
 				waveManager_.currentWave();
+			recordEvent(completedEvent);
 
-			const int spawned =
-				waveManager_.spawnNextWave(
-					enemies_,
-					randomEngine_,
-					config_,
-					player_.bounds(),
-					obstacles_,
-					nextEntityId_
-				);
+			if (waveManager_.currentWave() >=
+				config_.maximumWaves) {
 
-			if (spawned > 0) {
-				GameEvent startedEvent{};
-				startedEvent.type =
-					GameEventType::WaveStarted;
-				startedEvent.value =
-					waveManager_.currentWave();
-
-				recordEvent(startedEvent);
+				state_ = GameState::Victory;
+				GameEvent stateEvent{};
+				stateEvent.type =
+					GameEventType::GameStateChanged;
+				stateEvent.value =
+					static_cast<int>(state_);
+				recordEvent(stateEvent);
+			}
+			else if (config_.waveIntermissionDuration <= 0.0f) {
+				if (startNextWave()) {
+					state_ = GameState::Playing;
+				}
+				else {
+					state_ = GameState::Intermission;
+					intermissionRemaining_ = 0.0f;
+					GameEvent stateEvent{};
+					stateEvent.type =
+						GameEventType::GameStateChanged;
+					stateEvent.value =
+						static_cast<int>(state_);
+					recordEvent(stateEvent);
+				}
+			}
+			else {
+				state_ = GameState::Intermission;
+				intermissionRemaining_ =
+					config_.waveIntermissionDuration;
+				GameEvent stateEvent{};
+				stateEvent.type =
+					GameEventType::GameStateChanged;
+				stateEvent.value =
+					static_cast<int>(state_);
+				recordEvent(stateEvent);
 			}
 		}
 
@@ -664,6 +776,9 @@ namespace neon {
 			if (directionLength > 0.0f) {
 				direction.x /= directionLength;
 				direction.y /= directionLength;
+
+				const int ammoBeforeShot =
+					weapon_.ammoInMagazine();
 
 				if (weapon_.consumeShot()) {
 					constexpr float pi =
@@ -711,6 +826,16 @@ namespace neon {
 						playerCenter;
 
 					recordEvent(event);
+
+					if (weapon_.reloadStartedThisUpdate()) {
+						recordReloadStarted(
+							ammoBeforeShot - 1
+						);
+					}
+
+					if (weapon_.reloadCompletedThisUpdate()) {
+						recordReloadCompleted();
+					}
 				}
 			}
 		}
@@ -722,6 +847,7 @@ namespace neon {
 		result.state = state_;
 		result.player.bounds = player_.bounds();
 		result.player.health = player_.health();
+		result.player.maxHealth = config_.playerInitialHealth;
 		result.player.alive = player_.isAlive();
 
 		result.player.invulnerable =
@@ -742,6 +868,9 @@ namespace neon {
 		result.aimPosition = aimPosition_;
 		result.score = score_;
 		result.currentWave = waveManager_.currentWave();
+		result.maximumWaves = config_.maximumWaves;
+		result.intermissionRemaining =
+			intermissionRemaining_;
 
 		result.obstacles.reserve(
 			obstacles_.size()
@@ -793,6 +922,14 @@ namespace neon {
 		return result;
 	}
 
+	std::vector<PresentationEvent>
+		Simulation::consumePresentationEvents() {
+
+		std::vector<PresentationEvent> result;
+		result.swap(presentationEvents_);
+		return result;
+	}
+
 	std::vector<ReplayFrame> Simulation::consumeRecordedInputs() {
 		std::vector<ReplayFrame> result;
 		result.swap(recorderInputs_);
@@ -801,6 +938,70 @@ namespace neon {
 
 	std::uint64_t Simulation::tick() const {
 		return tick_;
+	}
+
+	void Simulation::recordReloadStarted(
+		int ammoBeforeReload) {
+		GameEvent event{};
+		event.type =
+			GameEventType::ReloadStarted;
+		event.sourceId =
+			player_.id();
+		event.sourceKind =
+			GameEntityKind::Player;
+		event.value =
+			ammoBeforeReload;
+		event.position =
+			player_.center();
+
+		recordEvent(event);
+	}
+
+	void Simulation::recordReloadCompleted() {
+		GameEvent event{};
+		event.type =
+			GameEventType::ReloadCompleted;
+		event.sourceId =
+			player_.id();
+		event.sourceKind =
+			GameEntityKind::Player;
+		event.value =
+			weapon_.ammoInMagazine();
+		event.position =
+			player_.center();
+
+		recordEvent(event);
+	}
+
+	void Simulation::recordPresentationEvent(
+		PresentationEvent event) {
+
+		event.tick = tick_;
+		presentationEvents_.push_back(event);
+	}
+
+	bool Simulation::startNextWave() {
+		const int spawned =
+			waveManager_.spawnNextWave(
+				enemies_,
+				randomEngine_,
+				config_,
+				player_.bounds(),
+				obstacles_,
+				nextEntityId_
+			);
+
+		if (spawned <= 0) {
+			return false;
+		}
+
+		GameEvent event{};
+		event.type =
+			GameEventType::WaveStarted;
+		event.value =
+			waveManager_.currentWave();
+		recordEvent(event);
+		return true;
 	}
 
 	void Simulation::recordEvent(

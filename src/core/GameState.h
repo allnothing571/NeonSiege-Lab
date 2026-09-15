@@ -5,6 +5,8 @@ namespace neon {
 	enum class GameState {
 		Playing,
 		Paused,
-		Gameover
+		Intermission,
+		Gameover,
+		Victory
 	};
 }//namespace neon

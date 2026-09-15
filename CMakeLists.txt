@@ -7,12 +7,24 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(FetchContent)
-include(CTest)
+option(
+    BUILD_TESTING
+    "Build and register tests"
+    ON
+)
+
+if(BUILD_TESTING)
+    enable_testing()
+endif()
 
 set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC ON CACHE BOOL "" FORCE)
 set(SDL_TEST OFF CACHE BOOL "" FORCE)
 set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(SDL2TTF_SAMPLES OFF CACHE BOOL "" FORCE)
+set(SDL2TTF_VENDORED ON CACHE BOOL "" FORCE)
+set(SDL2TTF_HARFBUZZ OFF CACHE BOOL "" FORCE)
 
 FetchContent_Declare(
     SDL2
@@ -21,6 +33,16 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(SDL2)
+
+FetchContent_Declare(
+    SDL2_ttf
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL_ttf.git
+    GIT_TAG release-2.24.0
+    GIT_SHALLOW TRUE
+    GIT_SUBMODULES external/freetype
+    GIT_SUBMODULES_RECURSE TRUE
+)
+FetchContent_MakeAvailable(SDL2_ttf)
 
 add_library(neon_core STATIC)
 
@@ -41,9 +63,29 @@ target_sources(
     src/core/GameSnapshot.h
     src/core/EntityId.h
     src/core/GameEvent.h
+    src/core/PresentationEvent.h
     src/core/ReplayFrame.h
     src/core/ReplayTape.h
     src/core/ReplayTape.cpp
+    src/core/DetectionEvent.h
+    src/core/SpeedDetector.h
+    src/core/SpeedDetector.cpp
+    src/core/AutoFireDetector.h
+    src/core/AutoFireDetector.cpp
+    src/core/TeleportDetector.h
+    src/core/TeleportDetector.cpp
+    src/core/HealthDetector.h
+    src/core/HealthDetector.cpp
+    src/core/DamageDetector.h
+    src/core/DamageDetector.cpp
+    src/core/ScoreDetector.h
+    src/core/ScoreDetector.cpp
+    src/core/AimAssistDetector.h
+    src/core/AimAssistDetector.cpp
+    src/core/EspDetector.h
+    src/core/EspDetector.cpp
+    src/core/AutoDodgeDetector.h
+    src/core/AutoDodgeDetector.cpp
     src/core/Collision.h
     src/core/Obstacle.h
     src/core/LineOfSight.h
@@ -77,6 +119,10 @@ add_library(
     src/sdl/SdlInput.cpp
     src/sdl/AssetManager.h
     src/sdl/AssetManager.cpp
+    src/sdl/SdlTextRenderer.h
+    src/sdl/SdlTextRenderer.cpp
+    src/sdl/SdlPresentationEffects.h
+    src/sdl/SdlPresentationEffects.cpp
 )
 
 target_include_directories(
@@ -88,7 +134,9 @@ target_include_directories(
 target_link_libraries(
     neon_sdl
     PUBLIC neon_core
-    PRIVATE SDL2::SDL2-static
+    PRIVATE
+    SDL2::SDL2-static
+    SDL2_ttf::SDL2_ttf-static
 )
 
 if(MSVC)
@@ -119,6 +167,150 @@ add_executable(
 if(MSVC)
     target_compile_options(
         Day7CollisionRewrite
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day7EnemyObstacleDamage
+    exercises/day7_enemy_obstacle_damage.cpp
+)
+
+target_link_libraries(
+    Day7EnemyObstacleDamage
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day7EnemyObstacleDamage
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day7AutoReload
+    exercises/day7_auto_reload.cpp
+)
+
+target_link_libraries(
+    Day7AutoReload
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day7AutoReload
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day7SpawnSafety
+    exercises/day7_spawn_safety.cpp
+)
+
+target_link_libraries(
+    Day7SpawnSafety
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day7SpawnSafety
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day7EnemyBoundary
+    exercises/day7_enemy_boundary.cpp
+)
+
+target_link_libraries(
+    Day7EnemyBoundary
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day7EnemyBoundary
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day7EnemyNavigation
+    exercises/day7_enemy_navigation.cpp
+)
+
+target_link_libraries(
+    Day7EnemyNavigation
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day7EnemyNavigation
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day7GameOverOverlay
+    exercises/day7_game_over_overlay.cpp
+)
+
+target_link_libraries(
+    Day7GameOverOverlay
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day7GameOverOverlay
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day7FrontendStates
+    exercises/day7_frontend_states.cpp
+)
+
+target_link_libraries(
+    Day7FrontendStates
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day7FrontendStates
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day7PresentationEvents
+    exercises/day7_presentation_events.cpp
+)
+
+target_link_libraries(
+    Day7PresentationEvents
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day7PresentationEvents
         PRIVATE /W4 /permissive- /utf-8
     )
 endif()
@@ -560,6 +752,186 @@ if(MSVC)
     )
 endif()
 
+add_executable(
+    Day6DetectionEvent
+    exercises/day6_detection_event.cpp
+)
+
+target_link_libraries(
+    Day6DetectionEvent
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day6DetectionEvent
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day6SpeedDetector
+    exercises/day6_speed_detector.cpp
+)
+
+target_link_libraries(
+    Day6SpeedDetector
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day6SpeedDetector
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day6TeleportDetector
+    exercises/day6_teleport_detector.cpp
+)
+
+target_link_libraries(
+    Day6TeleportDetector
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day6TeleportDetector
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day6AutoFireDetector
+    exercises/day6_auto_fire_detector.cpp
+)
+
+target_link_libraries(
+    Day6AutoFireDetector
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day6AutoFireDetector
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day6HealthDetector
+    exercises/day6_health_detector.cpp
+)
+
+target_link_libraries(
+    Day6HealthDetector
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day6HealthDetector
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day6DamageDetector
+    exercises/day6_damage_detector.cpp
+)
+
+target_link_libraries(
+    Day6DamageDetector
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day6DamageDetector
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day6ScoreDetector
+    exercises/day6_score_detector.cpp
+)
+
+target_link_libraries(
+    Day6ScoreDetector
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day6ScoreDetector
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day6AimAssistDetector
+    exercises/day6_aim_assist_detector.cpp
+)
+
+target_link_libraries(
+    Day6AimAssistDetector
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day6AimAssistDetector
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day6EspDetector
+    exercises/day6_esp_detector.cpp
+)
+
+target_link_libraries(
+    Day6EspDetector
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day6EspDetector
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day6AutoDodgeDetector
+    exercises/day6_auto_dodge_detector.cpp
+)
+
+target_link_libraries(
+    Day6AutoDodgeDetector
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        Day6AutoDodgeDetector
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
 if(MSVC)
     target_compile_options(
         Day1EntityExercise
@@ -627,5 +999,23 @@ if(BUILD_TESTING)
     add_test(NAME ReplayFrames COMMAND Day5ReplayFrames)
     add_test(NAME ReplayTape COMMAND Day5ReplayTape)
     add_test(NAME ReloadEvents COMMAND Day5ReloadEvents)
+    add_test(NAME DetectionEvent COMMAND Day6DetectionEvent)
+    add_test(NAME SpeedDetector COMMAND Day6SpeedDetector)
+    add_test(NAME TeleportDetector COMMAND Day6TeleportDetector)
+    add_test(NAME AutoFireDetector COMMAND Day6AutoFireDetector)
+    add_test(NAME HealthDetector COMMAND Day6HealthDetector)
+    add_test(NAME DamageDetector COMMAND Day6DamageDetector)
+    add_test(NAME ScoreDetector COMMAND Day6ScoreDetector)
+    add_test(NAME AimAssistDetector COMMAND Day6AimAssistDetector)
+    add_test(NAME EspDetector COMMAND Day6EspDetector)
+    add_test(NAME AutoDodgeDetector COMMAND Day6AutoDodgeDetector)
+    add_test(NAME EnemyObstacleDamage COMMAND Day7EnemyObstacleDamage)
+    add_test(NAME AutoReload COMMAND Day7AutoReload)
+    add_test(NAME SpawnSafety COMMAND Day7SpawnSafety)
+    add_test(NAME EnemyBoundary COMMAND Day7EnemyBoundary)
+    add_test(NAME EnemyNavigation COMMAND Day7EnemyNavigation)
+    add_test(NAME GameOverOverlay COMMAND Day7GameOverOverlay)
+    add_test(NAME FrontendStates COMMAND Day7FrontendStates)
+    add_test(NAME PresentationEvents COMMAND Day7PresentationEvents)
     add_test(NAME NeonSiegeSmoke COMMAND NeonSiege --smoke-test)
 endif()

@@ -11,7 +11,8 @@ namespace neon {
 		const Rect& worldBounds,
 		const Rect& playerBounds,
 		const std::vector<Obstacle>& obstacles,
-		const std::vector<Enemy>& enemies) {
+		const std::vector<Enemy>& enemies,
+		float playerSpawnSafeMargin) {
 
 		const bool insideWorld =
 			candidate.x >= worldBounds.x &&
@@ -21,8 +22,18 @@ namespace neon {
 			candidate.y + candidate.h <=
 			worldBounds.y + worldBounds.h;
 
+		const float safeMargin =
+			std::max(0.0f, playerSpawnSafeMargin);
+
+		const Rect protectedPlayerBounds{
+			playerBounds.x - safeMargin,
+			playerBounds.y - safeMargin,
+			playerBounds.w + safeMargin * 2.0f,
+			playerBounds.h + safeMargin * 2.0f
+		};
+
 		if (!insideWorld ||
-			intersects(candidate, playerBounds)) {
+			intersects(candidate, protectedPlayerBounds)) {
 			return false;
 		}
 
@@ -61,7 +72,8 @@ namespace neon {
 		const Rect& playerBounds,
 		const std::vector<Obstacle>& obstacles,
 		const std::vector<Enemy>& enemies,
-		int maxAttemps) {
+		int maxAttemps,
+		float playerSpawnSafeMargin) {
 
 		if (enemySize <= 0.0f ||
 			maxAttemps <= 0 ||
@@ -107,7 +119,8 @@ namespace neon {
 				worldBounds,
 				playerBounds,
 				obstacles,
-				enemies)) {
+				enemies,
+				playerSpawnSafeMargin)) {
 
 				return position;
 			}

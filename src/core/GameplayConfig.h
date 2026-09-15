@@ -24,7 +24,7 @@ namespace neon {
 		int playerInitialHealth = 100;
 		float playerInvulnerabilityDuration = 0.5f;
 
-		int enemyContactDamage = 1;
+		int enemyContactDamage = 10;
 		float enemySize = 32.0f;
 		float enemyBaseSpeed = 70.0f;
 		float enemySpeedStep = 10.0f;
@@ -37,7 +37,10 @@ namespace neon {
 		float shooterFireInterval = 1.2f;
 
 		int maximumEnemiesPerWave = 12;
+		int maximumWaves = 10;
+		float waveIntermissionDuration = 2.0f;
 		int spawnMaxAttemptsPerEnemy = 64;
+		float playerSpawnSafeMargin = 96.0f;
 
 		std::uint32_t randomSeed = 1337u;
 

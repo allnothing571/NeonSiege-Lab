@@ -58,7 +58,8 @@ namespace neon {
 						playerBounds,
 						obstacles,
 						enemies,
-						config.spawnMaxAttemptsPerEnemy
+						config.spawnMaxAttemptsPerEnemy,
+						config.playerSpawnSafeMargin
 					);
 
 				if (!position.has_value()) {

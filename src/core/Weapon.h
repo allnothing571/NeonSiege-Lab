@@ -24,6 +24,8 @@ namespace neon {
 			cooldownRemaining_ = 0.0f;
 			reloadRemaining_ = 0.0f;
 			fireRequested_ = false;
+			reloadStartedThisUpdate_ = false;
+			reloadCompletedThisUpdate_ = false;
 		}
 
 		void update(
@@ -32,6 +34,8 @@ namespace neon {
 			bool reloadPressed) {
 
 			fireRequested_ = false;
+			reloadStartedThisUpdate_ = false;
+			reloadCompletedThisUpdate_ = false;
 
 			if (dt <= 0.0f) {
 				return;
@@ -43,6 +47,7 @@ namespace neon {
 				if (reloadRemaining_ <= 0.0f) {
 					reloadRemaining_ = 0.0f;
 					ammoInMagazine_ = magazineCapacity_;
+					reloadCompletedThisUpdate_ = true;
 				}
 
 				return;
@@ -50,14 +55,7 @@ namespace neon {
 
 			if (reloadPressed &&
 				ammoInMagazine_ < magazineCapacity_) {
-
-				if (reloadDuration_ <= 0.0f) {
-					ammoInMagazine_ = magazineCapacity_;
-					reloadRemaining_ = 0.0f;
-				}
-				else {
-					reloadRemaining_ = reloadDuration_;
-				}
+				startReload();
 
 				return;
 			}
@@ -92,6 +90,10 @@ namespace neon {
 			cooldownRemaining_ = fireInterval_;
 			fireRequested_ = false;
 
+			if (ammoInMagazine_ == 0) {
+				startReload();
+			}
+
 			return true;
 		}
 
@@ -122,7 +124,34 @@ namespace neon {
 			);
 		}
 
+		bool reloadStartedThisUpdate() const {
+			return reloadStartedThisUpdate_;
+		}
+
+		bool reloadCompletedThisUpdate() const {
+			return reloadCompletedThisUpdate_;
+		}
+
 	private:
+		void startReload() {
+			if (ammoInMagazine_ >= magazineCapacity_ ||
+				isReloading()) {
+
+				return;
+			}
+
+			reloadStartedThisUpdate_ = true;
+
+			if (reloadDuration_ <= 0.0f) {
+				ammoInMagazine_ = magazineCapacity_;
+				reloadRemaining_ = 0.0f;
+				reloadCompletedThisUpdate_ = true;
+			}
+			else {
+				reloadRemaining_ = reloadDuration_;
+			}
+		}
+
 		int magazineCapacity_ = 0;
 		int ammoInMagazine_ = 0;
 
@@ -133,5 +162,7 @@ namespace neon {
 		float reloadRemaining_ = 0.0f;
 
 		bool fireRequested_ = false;
+		bool reloadStartedThisUpdate_ = false;
+		bool reloadCompletedThisUpdate_ = false;
 	};
 }

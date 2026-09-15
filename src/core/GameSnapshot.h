@@ -13,6 +13,7 @@ namespace neon {
 	{
 		Rect bounds{};
 		int health = 0;
+		int maxHealth = 0;
 		bool alive = false;
 
 		bool invulnerable = false;
@@ -56,6 +57,8 @@ namespace neon {
 
 		int score = 0;
 		int currentWave = 0;
+		int maximumWaves = 1;
+		float intermissionRemaining = 0.0f;
 	};
 
 }//namespace neon

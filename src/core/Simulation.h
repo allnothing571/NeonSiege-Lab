@@ -14,6 +14,7 @@
 #include "core/GameSnapshot.h"
 #include "core/Obstacle.h"
 #include "core/GameEvent.h"
+#include "core/PresentationEvent.h"
 #include "core/ReplayFrame.h"
 
 namespace neon {
@@ -36,6 +37,7 @@ namespace neon {
 		GameState state() const;
 
 		std::vector<GameEvent> consumeEvents();
+		std::vector<PresentationEvent> consumePresentationEvents();
 
 		std::uint64_t tick() const;
 		std::vector<ReplayFrame> consumeRecordedInputs();
@@ -52,14 +54,22 @@ namespace neon {
 		std::mt19937 randomEngine_;
 
 		GameState state_ = GameState::Playing;
+		GameState pausedFromState_ = GameState::Playing;
 		int score_ = 0;
+		float intermissionRemaining_ = 0.0f;
 
 		void recordEvent(GameEvent event);
 
 		std::uint64_t tick_ = 0;
 		std::vector<GameEvent> events_{};
+		std::vector<PresentationEvent> presentationEvents_{};
 		EntityId nextEntityId_ = 2;
 
 		std::vector<ReplayFrame> recorderInputs_{};
+
+		void recordReloadStarted(int ammoBeforeReload);
+		void recordReloadCompleted();
+		void recordPresentationEvent(PresentationEvent event);
+		bool startNextWave();
 	};
 }

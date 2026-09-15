@@ -136,8 +136,10 @@ int main(int argc, char* argv[]) {
 		const bool stateCommand =
 			command.pausePressed ||
 			(command.restartPressed &&
-				simulation.state() ==
-				neon::GameState::Gameover);
+				(simulation.state() ==
+					neon::GameState::Gameover ||
+					simulation.state() ==
+					neon::GameState::Victory));
 
 		if (stateCommand) {
 			simulation.step(
@@ -155,13 +157,17 @@ int main(int argc, char* argv[]) {
 		}
 		else if (
 			simulation.state() ==
-			neon::GameState::Playing) {
+			neon::GameState::Playing ||
+			simulation.state() ==
+			neon::GameState::Intermission) {
 
 			accumulator += frameTime;
 		}
 
-		while (simulation.state() ==
-			neon::GameState::Playing &&
+		while ((simulation.state() ==
+			neon::GameState::Playing ||
+			simulation.state() ==
+			neon::GameState::Intermission) &&
 			accumulator >= fixedDt) {
 
 			simulation.step(
@@ -181,6 +187,9 @@ int main(int argc, char* argv[]) {
 
 		const neon::GameSnapshot snapshot =
 			simulation.snapshot();
+		const std::vector<neon::PresentationEvent>
+			presentationEvents =
+			simulation.consumePresentationEvents();
 
 		if (snapshot.score > highScore) {
 			highScore = snapshot.score;
@@ -212,7 +221,11 @@ int main(int argc, char* argv[]) {
 			title.c_str()
 		);
 
-		gameRenderer.render(snapshot);
+		gameRenderer.render(
+			snapshot,
+			presentationEvents,
+			static_cast<float>(frameTime)
+		);
 
 		if (smokeTest) {
 			running = false;

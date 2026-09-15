@@ -33,7 +33,8 @@ int main() {
 
     farEnemy.update(
         neon::Vec2{ 405.0f, 5.0f },
-        dt
+        dt,
+        config.worldBounds
     );
 
     const bool approachPassed =
@@ -52,7 +53,8 @@ int main() {
 
     middleEnemy.update(
         neon::Vec2{ 255.0f, 5.0f },
-        dt
+        dt,
+        config.worldBounds
     );
 
     const bool strafePassed =
@@ -71,11 +73,12 @@ int main() {
 
     nearEnemy.update(
         neon::Vec2{ 125.0f, 5.0f },
-        dt
+        dt,
+        config.worldBounds
     );
 
     const bool retreatPassed =
-        nearlyEqual(nearEnemy.bounds().x, -100.0f) &&
+        nearlyEqual(nearEnemy.bounds().x, 0.0f) &&
         nearlyEqual(nearEnemy.bounds().y, 0.0f);
 
     return approachPassed &&

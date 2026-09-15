@@ -4,7 +4,7 @@ int main() {
 	neon::GameplayConfig config{};
 
 	const bool defaultsPassed =
-		config.enemyContactDamage == 1 &&
+		config.enemyContactDamage == 10 &&
 		config.worldBounds.x == 0.0f &&
 		config.worldBounds.y == 0.0f &&
 		config.worldBounds.w == 960.0f &&
@@ -25,7 +25,9 @@ int main() {
 		config.enemySpeedStep == 10.0f &&
 		config.enemyHealth == 30 &&
 		config.maximumEnemiesPerWave == 12 &&
+		config.maximumWaves == 10 &&
 		config.spawnMaxAttemptsPerEnemy == 64 &&
+		config.playerSpawnSafeMargin == 96.0f &&
 		config.randomSeed == 1337u &&
 		config.magazineCapacity == 12 &&
 		config.fireInterval == 0.2f &&

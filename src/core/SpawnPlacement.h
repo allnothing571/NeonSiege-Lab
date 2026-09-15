@@ -14,7 +14,8 @@ namespace neon {
 		const Rect& worldBounds,
 		const Rect& playerBounds,
 		const std::vector<Obstacle>& obstacles,
-		const std::vector<Enemy>& enemies
+		const std::vector<Enemy>& enemies,
+		float playerSpawnSafeMargin = 0.0f
 	);
 
 	std::optional<Vec2> findRandomSpawnPosition(
@@ -24,7 +25,8 @@ namespace neon {
 		const Rect& playerBounds,
 		const std::vector<Obstacle>& obstacles,
 		const std::vector<Enemy>& enemies,
-		int maxAttempts
+		int maxAttempts,
+		float playerSpawnSafeMargin = 0.0f
 	);
 
 }//namespace neon
