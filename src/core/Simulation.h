@@ -7,6 +7,7 @@
 #include "core/GameState.h"
 #include "core/GameplayConfig.h"
 #include "core/InputCommand.h"
+#include "core/MapDefinition.h"
 #include "core/Player.h"
 #include "core/Projectile.h"
 #include "core/WaveManager.h"
@@ -26,6 +27,8 @@ namespace neon {
 		);
 
 		void reset();
+
+		bool reset(MapId mapId);
 
 		void step(
 			const InputCommand& command,
@@ -49,6 +52,7 @@ namespace neon {
 		std::vector<Enemy> enemies_;
 		std::vector<Projectile> projectiles_;
 		std::vector<Obstacle> obstacles_;
+		MapId currentMapId_ = MapId::Legacy;
 		Vec2 aimPosition_{};
 		WaveManager waveManager_;
 		std::mt19937 randomEngine_;

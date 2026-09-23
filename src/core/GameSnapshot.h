@@ -6,6 +6,7 @@
 #include "core/Types.h"
 #include "core/EnemyKind.h"
 #include "core/ProjectileFaction.h"
+#include "core/MapDefinition.h"
 
 namespace neon {
 
@@ -47,6 +48,7 @@ namespace neon {
 	struct GameSnapshot
 	{
 		GameState state = GameState::Playing;
+		MapId mapId = MapId::Legacy;
 
 		PlayerSnapshot player{};
 		std::vector<EnemySnapshot> enemies{};

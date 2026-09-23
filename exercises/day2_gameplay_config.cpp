@@ -7,10 +7,10 @@ int main() {
 		config.enemyContactDamage == 10 &&
 		config.worldBounds.x == 0.0f &&
 		config.worldBounds.y == 0.0f &&
-		config.worldBounds.w == 960.0f &&
-		config.worldBounds.h == 540.0f &&
-		config.playerStartPosition.x == 456.0f &&
-		config.playerStartPosition.y == 246.0f &&
+		config.worldBounds.w == 1280.0f &&
+		config.worldBounds.h == 720.0f &&
+		config.playerStartPosition.x == 616.0f &&
+		config.playerStartPosition.y == 336.0f &&
 		config.playerSize == 48.0f &&
 		config.playerSpeed == 240.0f &&
 		config.playerInitialHealth == 100 &&
@@ -33,12 +33,12 @@ int main() {
 		config.fireInterval == 0.2f &&
 		config.reloadDuration == 1.2f;
 
-	config.worldBounds.w = 1280.0f;
+	config.worldBounds.w = 1600.0f;
 	config.playerSpeed = 300.0f;
 	config.scorePerEnemy = 150;
 
 	const bool overridesPassed =
-		config.worldBounds.w == 1280.0f &&
+		config.worldBounds.w == 1600.0f &&
 		config.playerSpeed == 300.0f &&
 		config.scorePerEnemy == 150;
 

@@ -6,6 +6,7 @@
 #include "core/Collision.h"
 #include "core/AimSpread.h"
 #include "core/LineOfSight.h"
+#include "core/MapCatalog.h"
 
 namespace neon {
 
@@ -33,6 +34,13 @@ namespace neon {
 	}
 
 	void Simulation::reset() {
+		const MapDefinition* selectedMap =
+			findPresetMap(currentMapId_);
+		const Vec2 playerStartPosition =
+			selectedMap != nullptr
+			? selectedMap->playerStartPosition
+			: config_.playerStartPosition;
+
 		events_.clear();
 		presentationEvents_.clear();
 		recorderInputs_.clear();
@@ -46,7 +54,7 @@ namespace neon {
 		randomEngine_.seed(config_.randomSeed);
 
 		player_.reset(
-			config_.playerStartPosition,
+			playerStartPosition,
 			config_.playerInitialHealth
 		);
 
@@ -59,28 +67,50 @@ namespace neon {
 
 		obstacles_.clear();
 
-		obstacles_.emplace_back(
-			Rect{ 180.0f, 120.0f, 140.0f, 28.0f }
-		);
+		if (selectedMap != nullptr) {
+			obstacles_.reserve(
+				selectedMap->obstacleBounds.size()
+			);
+			for (const Rect& bounds :
+				selectedMap->obstacleBounds) {
+				obstacles_.emplace_back(bounds);
+			}
+		}
+		else {
+			obstacles_.emplace_back(
+				Rect{ 180.0f, 120.0f, 140.0f, 28.0f }
+			);
 
-		obstacles_.emplace_back(
-			Rect{ 640.0f, 120.0f, 140.0f, 28.0f }
-		);
+			obstacles_.emplace_back(
+				Rect{ 640.0f, 120.0f, 140.0f, 28.0f }
+			);
 
-		obstacles_.emplace_back(
-			Rect{ 390.0f, 360.0f, 180.0f, 30.0f }
-		);
+			obstacles_.emplace_back(
+				Rect{ 390.0f, 360.0f, 180.0f, 30.0f }
+			);
 
-		obstacles_.emplace_back(
-			Rect{ 90.0f, 370.0f, 90.0f, 26.0f }
-		);
+			obstacles_.emplace_back(
+				Rect{ 90.0f, 370.0f, 90.0f, 26.0f }
+			);
 
-		obstacles_.emplace_back(
-			Rect{ 780.0f, 370.0f, 90.0f, 26.0f }
-		);
+			obstacles_.emplace_back(
+				Rect{ 780.0f, 370.0f, 90.0f, 26.0f }
+			);
+		}
 
 		waveManager_.reset();
 		startNextWave();
+	}
+
+	bool Simulation::reset(
+		MapId mapId) {
+		if (findPresetMap(mapId) == nullptr) {
+			return false;
+		}
+
+		currentMapId_ = mapId;
+		reset();
+		return true;
 	}
 
 	void Simulation::step(
@@ -845,6 +875,7 @@ namespace neon {
 		GameSnapshot result{};
 
 		result.state = state_;
+		result.mapId = currentMapId_;
 		result.player.bounds = player_.bounds();
 		result.player.health = player_.health();
 		result.player.maxHealth = config_.playerInitialHealth;

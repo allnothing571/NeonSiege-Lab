@@ -31,6 +31,7 @@ namespace {
 		const neon::GameSnapshot& second
 	) {
 		if (first.state != second.state ||
+			first.mapId != second.mapId ||
 			first.score != second.score ||
 			first.currentWave != second.currentWave ||
 			!nearlyEqual(
@@ -143,10 +144,14 @@ int main() {
 	constexpr float fixedDt = 1.0f / 60.0f;
 
 	neon::Simulation source(config);
+	if (!source.reset(neon::MapId::SplitCorridors)) {
+		return 1;
+	}
 	source.consumeEvents();
 
 	neon::ReplayTape tape{};
 	tape.randomSeed = config.randomSeed;
+	tape.mapId = source.snapshot().mapId;
 	tape.fixedDt = fixedDt;
 
 	std::vector<neon::GameSnapshot> expectedSnapshots{};
@@ -214,6 +219,7 @@ int main() {
 
 	if (loaded.version != tape.version ||
 		loaded.randomSeed != tape.randomSeed ||
+		loaded.mapId != tape.mapId ||
 		!nearlyEqual(
 			loaded.fixedDt,
 			tape.fixedDt
@@ -227,6 +233,10 @@ int main() {
 	replayConfig.randomSeed = loaded.randomSeed;
 
 	neon::Simulation replay(replayConfig);
+	if (loaded.mapId != neon::MapId::Legacy &&
+		!replay.reset(loaded.mapId)) {
+		return 5;
+	}
 	replay.consumeEvents();
 
 	for (std::size_t index = 0;
@@ -275,6 +285,25 @@ int main() {
 		error
 	)) {
 		return 7;
+	}
+
+	std::stringstream legacyInput{
+		"NEON_REPLAY 1\n"
+		"SEED 1337\n"
+		"FIXED_DT 0.0166666675\n"
+		"FRAMES 0\n"
+		"END\n"
+	};
+	neon::ReplayTape legacyTape{};
+
+	if (!neon::readReplay(
+		legacyInput,
+		legacyTape,
+		error
+	) ||
+		legacyTape.version != 1u ||
+		legacyTape.mapId != neon::MapId::Legacy) {
+		return 8;
 	}
 
 	return 0;

@@ -1,10 +1,27 @@
+#include <algorithm>
 #include <cmath>
+#include <iostream>
 
+#include "core/LineOfSight.h"
 #include "core/Simulation.h"
 
 bool nearlyEqual(float first, float second) {
 	constexpr float epsilon = 0.001f;
 	return std::fabs(first - second) <= epsilon;
+}
+
+bool reportCheck(
+	bool passed,
+	const char* checkName)
+{
+	if (!passed) {
+		std::cerr
+			<< "Simulation check failed: "
+			<< checkName
+			<< '\n';
+	}
+
+	return passed;
 }
 
 float centerDistanceSquared(
@@ -34,6 +51,34 @@ int main() {
 	neon::GameplayConfig simulationConfig{};
 	simulationConfig.enemyBaseSpeed = 0.0f;
 	simulationConfig.enemySpeedStep = 0.0f;
+	simulationConfig.playerStartPosition = {
+		100.0f,
+		200.0f
+	};
+
+	const float initialPlayerX =
+		simulationConfig.playerStartPosition.x;
+
+	const float initialPlayerY =
+		simulationConfig.playerStartPosition.y;
+
+	const float playerCenterX =
+		initialPlayerX +
+		simulationConfig.playerSize / 2.0f;
+
+	const float playerCenterY =
+		initialPlayerY +
+		simulationConfig.playerSize / 2.0f;
+
+	const float halfSecondMovement =
+		simulationConfig.playerSpeed * 0.5f;
+
+	const float movedPlayerX =
+		initialPlayerX + halfSecondMovement;
+
+	const float resumedPlayerX =
+		initialPlayerX +
+		halfSecondMovement * 2.0f;
 
 	neon::Simulation simulation{
 		simulationConfig
@@ -131,8 +176,8 @@ int main() {
 		initialSnapshot.enemies.size() == 3 &&
 		initialSnapshot.projectiles.empty() &&
 		initialSnapshot.player.health == 100 &&
-		nearlyEqual(initialBounds.x, 456.0f) &&
-		nearlyEqual(initialBounds.y, 246.0f);
+		nearlyEqual(initialBounds.x, initialPlayerX) &&
+		nearlyEqual(initialBounds.y, initialPlayerY);
 
 	neon::InputCommand moveCommand{};
 	moveCommand.movement = { 1.0f, 0.0f };
@@ -143,8 +188,8 @@ int main() {
 		simulation.snapshot();
 
 	const bool movementPassed =
-		nearlyEqual(movedSnapshot.player.bounds.x, 576.0f) &&
-		nearlyEqual(movedSnapshot.player.bounds.y, 246.0f);
+		nearlyEqual(movedSnapshot.player.bounds.x, movedPlayerX) &&
+		nearlyEqual(movedSnapshot.player.bounds.y, initialPlayerY);
 
 	neon::InputCommand pauseCommand{};
 	pauseCommand.movement = { 1.0f, 0.0f };
@@ -157,7 +202,10 @@ int main() {
 
 	const bool pauseEnteredPassed =
 		pausedSnapshot.state == neon::GameState::Paused &&
-		nearlyEqual(pausedSnapshot.player.bounds.x, 576.0f);
+		nearlyEqual(
+			pausedSnapshot.player.bounds.x,
+			movedPlayerX
+		);
 
 	simulation.step(moveCommand, 0.5f);
 
@@ -166,7 +214,7 @@ int main() {
 
 	const bool pausedMovementBlocked =
 		stillPausedSnapshot.state == neon::GameState::Paused &&
-		nearlyEqual(stillPausedSnapshot.player.bounds.x, 576.0f);
+		nearlyEqual(stillPausedSnapshot.player.bounds.x, movedPlayerX);
 
 	neon::InputCommand unpauseCommand{};
 	unpauseCommand.pausePressed = true;
@@ -178,7 +226,7 @@ int main() {
 
 	const bool pauseExitedPassed =
 		unpausedSnapshot.state == neon::GameState::Playing &&
-		nearlyEqual(unpausedSnapshot.player.bounds.x, 576.0f);
+		nearlyEqual(unpausedSnapshot.player.bounds.x, movedPlayerX);
 
 	simulation.step(moveCommand, 0.0f);
 	simulation.step(moveCommand, -1.0f);
@@ -187,7 +235,10 @@ int main() {
 		simulation.snapshot();
 
 	const bool invalidStepBlocked =
-		nearlyEqual(invalidStepSnapshot.player.bounds.x, 576.0f);
+		nearlyEqual(
+			invalidStepSnapshot.player.bounds.x,
+			movedPlayerX
+		);
 
 	simulation.step(moveCommand, 0.5f);
 
@@ -195,7 +246,7 @@ int main() {
 		simulation.snapshot();
 
 	const bool resumedMovementPassed =
-		nearlyEqual(resumedSnapshot.player.bounds.x, 696.0f);
+		nearlyEqual(resumedSnapshot.player.bounds.x, resumedPlayerX);
 
 	simulation.reset();
 
@@ -205,7 +256,7 @@ int main() {
 	const bool resetDeterminismPassed =
 		!resetSnapshot.enemies.empty() &&
 		resetSnapshot.enemies.size() ==
-		initialSnapshot.enemies.size() &&
+			initialSnapshot.enemies.size() &&
 		nearlyEqual(
 			resetSnapshot.enemies[0].bounds.x,
 			initialSnapshot.enemies[0].bounds.x
@@ -216,7 +267,8 @@ int main() {
 		);
 
 	const bool snapshotPassed =
-		resetSnapshot.state == neon::GameState::Playing &&
+		resetSnapshot.state ==
+			neon::GameState::Playing &&
 		resetSnapshot.score == 0 &&
 		resetSnapshot.currentWave == 1 &&
 		resetSnapshot.enemies.size() == 3 &&
@@ -226,22 +278,48 @@ int main() {
 		resetSnapshot.player.ammoInMagazine == 12 &&
 		resetSnapshot.player.magazineCapacity == 12 &&
 		!resetSnapshot.player.reloading &&
-		nearlyEqual(resetSnapshot.player.bounds.x, 456.0f) &&
-		nearlyEqual(resetSnapshot.player.bounds.y, 246.0f) &&
-		nearlyEqual(resetSnapshot.aimPosition.x, 480.0f) &&
-		nearlyEqual(resetSnapshot.aimPosition.y, 270.0f) &&
+		nearlyEqual(
+			resetSnapshot.player.bounds.x,
+			initialPlayerX
+		) &&
+		nearlyEqual(
+			resetSnapshot.player.bounds.y,
+			initialPlayerY
+		) &&
+		nearlyEqual(
+			resetSnapshot.aimPosition.x,
+			playerCenterX
+		) &&
+		nearlyEqual(
+			resetSnapshot.aimPosition.y,
+			playerCenterY
+		) &&
 		resetDeterminismPassed;
 
 	neon::GameplayConfig projectileConfig{};
 	projectileConfig.maximumEnemiesPerWave = 0;
 	projectileConfig.playerProjectileSpreadDegrees = 0.0f;
 
+	const float projectileOriginX =
+		projectileConfig.playerStartPosition.x +
+		projectileConfig.playerSize / 2.0f;
+
+	const float projectileOriginY =
+		projectileConfig.playerStartPosition.y +
+		projectileConfig.playerSize / 2.0f;
+
+	const float projectileAimX =
+		projectileOriginX + 320.0f;
+
 	neon::Simulation projectileSimulation{
 		projectileConfig
 	};
 
 	neon::InputCommand fireCommand{};
-	fireCommand.aimPosition = { 800.0f, 270.0f };
+	fireCommand.aimPosition = {
+		projectileAimX,
+		projectileOriginY
+	};
 	fireCommand.fireHeld = true;
 
 	projectileSimulation.step(
@@ -256,11 +334,11 @@ int main() {
 		firstShotSnapshot.projectiles.size() == 1 &&
 		nearlyEqual(
 			firstShotSnapshot.projectiles[0].bounds.x,
-			480.0f
+			projectileOriginX
 		) &&
 		nearlyEqual(
 			firstShotSnapshot.projectiles[0].bounds.y,
-			270.0f
+			projectileOriginY
 		);
 
 	projectileSimulation.step(
@@ -275,7 +353,7 @@ int main() {
 		heldSnapshot.projectiles.size() == 1 &&
 		nearlyEqual(
 			heldSnapshot.projectiles[0].bounds.x,
-			490.0f
+			projectileOriginX + 10.0f
 		);
 
 	for (int stepIndex = 0;
@@ -312,8 +390,8 @@ int main() {
 
 	neon::InputCommand spreadFireCommand{};
 	spreadFireCommand.aimPosition = {
-		800.0f,
-		270.0f
+		projectileAimX,
+		projectileOriginY
 	};
 	spreadFireCommand.fireHeld = true;
 
@@ -329,8 +407,8 @@ int main() {
 
 	neon::InputCommand spreadIdleCommand{};
 	spreadIdleCommand.aimPosition = {
-		800.0f,
-		270.0f
+		projectileAimX,
+		projectileOriginY
 	};
 
 	firstSpreadSimulation.step(
@@ -363,11 +441,11 @@ int main() {
 
 	const float spreadDeltaX =
 		firstSpreadSnapshot.projectiles[0].bounds.x -
-		480.0f;
+		projectileOriginX;
 
 	const float spreadDeltaY =
 		firstSpreadSnapshot.projectiles[0].bounds.y -
-		270.0f;
+		projectileOriginY;
 
 	constexpr float maximumSpreadRadians =
 		3.14159265358979323846f / 60.0f;
@@ -385,7 +463,10 @@ int main() {
 	};
 
 	neon::InputCommand zeroAimFire{};
-	zeroAimFire.aimPosition = { 480.0f, 270.0f };
+	zeroAimFire.aimPosition = {
+		projectileOriginX,
+		projectileOriginY
+	};
 	zeroAimFire.fireHeld = true;
 
 	zeroAimSimulation.step(
@@ -410,8 +491,51 @@ int main() {
 	const neon::GameSnapshot beforeHit =
 		hitSimulation.snapshot();
 
+	const neon::Vec2 hitPlayerCenter{
+		beforeHit.player.bounds.x +
+			beforeHit.player.bounds.w / 2.0f,
+		beforeHit.player.bounds.y +
+			beforeHit.player.bounds.h / 2.0f
+	};
+
+	const auto visibleEnemy =
+		std::find_if(
+			beforeHit.enemies.begin(),
+			beforeHit.enemies.end(),
+			[&beforeHit, hitPlayerCenter](
+				const neon::EnemySnapshot& enemy) {
+
+				const neon::Vec2 enemyCenter{
+					enemy.bounds.x +
+						enemy.bounds.w / 2.0f,
+					enemy.bounds.y +
+						enemy.bounds.h / 2.0f
+				};
+
+				return std::none_of(
+					beforeHit.obstacles.begin(),
+					beforeHit.obstacles.end(),
+					[hitPlayerCenter, enemyCenter](
+						const neon::ObstacleSnapshot&
+							obstacle) {
+
+						return neon::segmentIntersectsRect(
+							hitPlayerCenter,
+							enemyCenter,
+							obstacle.bounds
+						);
+					}
+				);
+			}
+		);
+
+	const bool visibleTargetFound =
+		visibleEnemy != beforeHit.enemies.end();
+
 	const neon::Rect targetBounds =
-		beforeHit.enemies[0].bounds;
+		visibleTargetFound
+		? visibleEnemy->bounds
+		: neon::Rect{};
 
 	const neon::Vec2 targetCenter{
 		targetBounds.x + targetBounds.w / 2.0f,
@@ -445,30 +569,85 @@ int main() {
 		hitSimulation.snapshot();
 
 	const bool projectileHitPassed =
+		visibleTargetFound &&
 		afterHit.score == 175 &&
 		afterHit.currentWave == 1 &&
 		afterHit.enemies.size() == 2 &&
 		afterHit.projectiles.empty();
 
 	const bool passed =
-		initialStatePassed &&
-		movementPassed &&
-		pauseEnteredPassed &&
-		pausedMovementBlocked &&
-		pauseExitedPassed &&
-		invalidStepBlocked &&
-		resumedMovementPassed &&
-		snapshotPassed &&
-		enemyMovementPassed &&
-		contactDamagePassed &&
-		restartPassed &&
-		firstShotPassed &&
-		heldFirePassed &&
-		secondShotPassed &&
-		deterministicSpreadPassed &&
-		spreadRangePassed &&
-		zeroAimBlocked &&
-		projectileHitPassed;
+		reportCheck(
+			initialStatePassed,
+			"initialStatePassed"
+		) &
+		reportCheck(
+			movementPassed,
+			"movementPassed"
+		) &
+		reportCheck(
+			pauseEnteredPassed,
+			"pauseEnteredPassed"
+		) &
+		reportCheck(
+			pausedMovementBlocked,
+			"pausedMovementBlocked"
+		) &
+		reportCheck(
+			pauseExitedPassed,
+			"pauseExitedPassed"
+		) &
+		reportCheck(
+			invalidStepBlocked,
+			"invalidStepBlocked"
+		) &
+		reportCheck(
+			resumedMovementPassed,
+			"resumedMovementPassed"
+		) &
+		reportCheck(
+			snapshotPassed,
+			"snapshotPassed"
+		) &
+		reportCheck(
+			enemyMovementPassed,
+			"enemyMovementPassed"
+		) &
+		reportCheck(
+			contactDamagePassed,
+			"contactDamagePassed"
+		) &
+		reportCheck(
+			restartPassed,
+			"restartPassed"
+		) &
+		reportCheck(
+			firstShotPassed,
+			"firstShotPassed"
+		) &
+		reportCheck(
+			heldFirePassed,
+			"heldFirePassed"
+		) &
+		reportCheck(
+			secondShotPassed,
+			"secondShotPassed"
+		) &
+		reportCheck(
+			deterministicSpreadPassed,
+			"deterministicSpreadPassed"
+		) &
+		reportCheck(
+			spreadRangePassed,
+			"spreadRangePassed"
+		) &
+		reportCheck(
+			zeroAimBlocked,
+			"zeroAimBlocked"
+		) &
+		reportCheck(
+			projectileHitPassed,
+			"projectileHitPassed"
+		);
 
 	return passed ? 0 : 1;
 }

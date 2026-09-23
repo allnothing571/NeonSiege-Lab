@@ -9,6 +9,8 @@
 #include <string>
 #include <utility>
 
+#include "core/MapCatalog.h"
+
 namespace {
 
 	constexpr std::size_t maxReplayFrames = 1'000'000;
@@ -29,6 +31,12 @@ namespace {
 			std::isfinite(command.movement.y) &&
 			std::isfinite(command.aimPosition.x) &&
 			std::isfinite(command.aimPosition.y);
+	}
+
+	bool validMapId(
+		neon::MapId mapId) {
+		return mapId == neon::MapId::Legacy ||
+			neon::findPresetMap(mapId) != nullptr;
 	}
 
 }//namespace
@@ -53,6 +61,10 @@ namespace neon {
 		if (!std::isfinite(tape.fixedDt) ||
 			tape.fixedDt <= 0.0f) {
 			return fail(error, "invalid fixed dt");
+		}
+
+		if (!validMapId(tape.mapId)) {
+			return fail(error, "invalid replay map");
 		}
 
 		if (tape.frames.size() > maxReplayFrames) {
@@ -82,6 +94,11 @@ namespace neon {
 		output
 			<< "SEED "
 			<< tape.randomSeed
+			<< '\n';
+
+		output
+			<< "MAP "
+			<< static_cast<std::uint32_t>(tape.mapId)
 			<< '\n';
 
 		output
@@ -146,7 +163,10 @@ namespace neon {
 			return fail(error, "invalid replay header");
 		}
 
-		if (candidate.version != ReplayTape::currentVersion) {
+		if (candidate.version <
+				ReplayTape::minimumSupportedVersion ||
+			candidate.version >
+				ReplayTape::currentVersion) {
 			return fail(error, "unsupported replay version");
 		}
 
@@ -154,6 +174,21 @@ namespace neon {
 			label != "SEED" ||
 			!(input >> candidate.randomSeed)) {
 			return fail(error, "invalid replay seed");
+		}
+
+		if (candidate.version >= 2u) {
+			std::uint32_t mapValue = 0u;
+			if (!(input >> label) ||
+				label != "MAP" ||
+				!(input >> mapValue)) {
+				return fail(error, "invalid replay map");
+			}
+
+			candidate.mapId =
+				static_cast<MapId>(mapValue);
+			if (!validMapId(candidate.mapId)) {
+				return fail(error, "unknown replay map");
+			}
 		}
 
 		if (!(input >> label) ||

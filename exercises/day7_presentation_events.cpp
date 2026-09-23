@@ -20,6 +20,16 @@ namespace {
 
 int main() {
 	neon::GameplayConfig config{};
+	config.worldBounds = neon::Rect{
+		0.0f,
+		0.0f,
+		960.0f,
+		540.0f
+	};
+	config.playerStartPosition = neon::Vec2{
+		456.0f,
+		246.0f
+	};
 	config.maximumWaves = 1;
 	config.maximumEnemiesPerWave = 1;
 	config.enemyBaseSpeed = 0.0f;

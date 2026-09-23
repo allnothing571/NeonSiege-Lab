@@ -7,19 +7,30 @@
 namespace neon {
 
 	struct GameplayConfig {
+		static constexpr float defaultWorldWidth =
+			1280.0f;
+
+		static constexpr float defaultWorldHeight =
+			720.0f;
+
+		static constexpr float defaultPlayerSize =
+			48.0f;
+
 		Rect worldBounds{
 			0.0f,
 			0.0f,
-			960.0f,
-			540.0f
+			defaultWorldWidth,
+			defaultWorldHeight
 		};
 
 		Vec2 playerStartPosition{
-			456.0f,
-			246.0f
+			(defaultWorldWidth - defaultPlayerSize) /
+				2.0f,
+			(defaultWorldHeight - defaultPlayerSize) /
+				2.0f
 		};
 
-		float playerSize = 48.0f;
+		float playerSize = defaultPlayerSize;
 		float playerSpeed = 240.0f;
 		int playerInitialHealth = 100;
 		float playerInvulnerabilityDuration = 0.5f;

@@ -88,6 +88,9 @@ target_sources(
     src/core/AutoDodgeDetector.cpp
     src/core/Collision.h
     src/core/Obstacle.h
+    src/core/MapDefinition.h
+    src/core/MapCatalog.h
+    src/core/MapCatalog.cpp
     src/core/LineOfSight.h
     src/core/AimSpread.h
     src/core/SpawnPlacement.h
@@ -115,6 +118,8 @@ add_library(
     src/sdl/SdlGameRenderer.cpp
     src/sdl/SdlPaths.h
     src/sdl/SdlPaths.cpp
+    src/sdl/SdlAppSettings.h
+    src/sdl/SdlAppSettings.cpp
     src/sdl/SdlInput.h
     src/sdl/SdlInput.cpp
     src/sdl/AssetManager.h
@@ -149,6 +154,8 @@ endif()
 add_executable(
 NeonSiege
 src/main.cpp
+src/GameApplication.h
+src/GameApplication.cpp
 src/SaveData.h
 src/SaveData.cpp)
 
@@ -175,6 +182,24 @@ add_executable(
     Day7EnemyObstacleDamage
     exercises/day7_enemy_obstacle_damage.cpp
 )
+
+add_executable(
+    CommercialMapCatalog
+    exercises/commercial_map_catalog.cpp
+)
+
+target_link_libraries(
+    CommercialMapCatalog
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        CommercialMapCatalog
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
 
 target_link_libraries(
     Day7EnemyObstacleDamage
@@ -311,6 +336,25 @@ target_link_libraries(
 if(MSVC)
     target_compile_options(
         Day7PresentationEvents
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day7FrontendInput
+    exercises/day7_frontend_input.cpp
+)
+
+target_link_libraries(
+    Day7FrontendInput
+    PRIVATE
+    neon_sdl
+    SDL2::SDL2-static
+)
+
+if(MSVC)
+    target_compile_options(
+        Day7FrontendInput
         PRIVATE /W4 /permissive- /utf-8
     )
 endif()
@@ -1009,6 +1053,7 @@ if(BUILD_TESTING)
     add_test(NAME AimAssistDetector COMMAND Day6AimAssistDetector)
     add_test(NAME EspDetector COMMAND Day6EspDetector)
     add_test(NAME AutoDodgeDetector COMMAND Day6AutoDodgeDetector)
+    add_test(NAME MapCatalog COMMAND CommercialMapCatalog)
     add_test(NAME EnemyObstacleDamage COMMAND Day7EnemyObstacleDamage)
     add_test(NAME AutoReload COMMAND Day7AutoReload)
     add_test(NAME SpawnSafety COMMAND Day7SpawnSafety)
@@ -1017,5 +1062,6 @@ if(BUILD_TESTING)
     add_test(NAME GameOverOverlay COMMAND Day7GameOverOverlay)
     add_test(NAME FrontendStates COMMAND Day7FrontendStates)
     add_test(NAME PresentationEvents COMMAND Day7PresentationEvents)
+    add_test(NAME FrontendInput COMMAND Day7FrontendInput)
     add_test(NAME NeonSiegeSmoke COMMAND NeonSiege --smoke-test)
 endif()
