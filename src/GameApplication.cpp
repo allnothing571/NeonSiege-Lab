@@ -3,6 +3,7 @@
 #include "GameApplication.h"
 
 #include <SDL.h>
+#include <SDL_image.h>
 
 #include <algorithm>
 #include <iostream>
@@ -17,6 +18,7 @@
 #include "core/MapCatalog.h"
 #include "core/Simulation.h"
 #include "sdl/AssetManager.h"
+#include "sdl/SdlAssetCatalog.h"
 #include "sdl/SdlAppSettings.h"
 #include "sdl/SdlGameRenderer.h"
 #include "sdl/SdlInput.h"
@@ -146,7 +148,27 @@ int runNeonSiege(
 		std::cerr << "无法设置逻辑画布: " << SDL_GetError() << '\n';
 	}
 
+	const int requestedImageFlags = IMG_INIT_PNG;
+	const int initializedImageFlags =
+		IMG_Init(requestedImageFlags);
+	if ((initializedImageFlags & requestedImageFlags) !=
+		requestedImageFlags) {
+		std::cerr << "SDL_image PNG 初始化警告: "
+			<< IMG_GetError() << '\n';
+	}
+
 	neon::sdl::AssetManager assetManager{};
+	const neon::sdl::AssetLoadReport assetLoadReport =
+		neon::sdl::loadGameAssets(
+			renderer,
+			assetManager
+		);
+	for (const neon::sdl::AssetLoadIssue& issue :
+		assetLoadReport.issues) {
+		std::cerr << "素材加载失败，使用图形回退: "
+			<< issue.relativePath
+			<< " (" << issue.message << ")\n";
+	}
 	neon::sdl::SdlGameRenderer gameRenderer(
 		renderer,
 		assetManager
@@ -512,6 +534,7 @@ int runNeonSiege(
 	}
 
 	assetManager.clear();
+	IMG_Quit();
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();

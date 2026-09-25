@@ -11,6 +11,7 @@
 
 #include "core/GameSnapshot.h"
 #include "sdl/AssetManager.h"
+#include "sdl/SdlAssetCatalog.h"
 
 namespace neon::sdl {
 
@@ -774,12 +775,21 @@ namespace neon::sdl {
 				const Rect& bounds,
 				Uint8 red,
 				Uint8 green,
-				Uint8 blue) {
+				Uint8 blue,
+				Uint8 modulationRed,
+				Uint8 modulationGreen,
+				Uint8 modulationBlue) {
 
 					SDL_Texture* texture =
 						assetManager_.texture(textureId);
 
 					if (texture != nullptr) {
+						SDL_SetTextureColorMod(
+							texture,
+							modulationRed,
+							modulationGreen,
+							modulationBlue
+						);
 						const SDL_FRect destination{
 							bounds.x,
 							bounds.y,
@@ -787,11 +797,20 @@ namespace neon::sdl {
 							bounds.h
 						};
 
-						if (SDL_RenderCopyF(
+						const bool rendered = SDL_RenderCopyF(
 							renderer_,
 							texture,
 							nullptr,
-							&destination) == 0) {
+							&destination
+						) == 0;
+						SDL_SetTextureColorMod(
+							texture,
+							255,
+							255,
+							255
+						);
+
+						if (rendered) {
 							return;
 						}
 					}
@@ -804,26 +823,136 @@ namespace neon::sdl {
 					);
 			};
 
+		const MapVisualDefinition& mapVisual =
+			mapVisualFor(snapshot.mapId);
+
 		SDL_SetRenderDrawColor(
 			renderer_,
-			18,
-			18,
-			18,
+			mapVisual.backgroundFallback.red,
+			mapVisual.backgroundFallback.green,
+			mapVisual.backgroundFallback.blue,
 			255
 		);
 
 		SDL_RenderClear(renderer_);
 
+		if (mapVisual.backgroundTexture.has_value()) {
+			SDL_Texture* backgroundTexture =
+				assetManager_.texture(
+					*mapVisual.backgroundTexture
+				);
+			if (backgroundTexture != nullptr) {
+				const CanvasSize size = canvasSize(renderer_);
+				const SDL_FRect destination{
+					0.0f,
+					0.0f,
+					static_cast<float>(size.width),
+					static_cast<float>(size.height)
+				};
+				SDL_SetTextureColorMod(
+					backgroundTexture,
+					180,
+					180,
+					180
+				);
+				SDL_RenderCopyF(
+					renderer_,
+					backgroundTexture,
+					nullptr,
+					&destination
+				);
+				SDL_SetTextureColorMod(
+					backgroundTexture,
+					255,
+					255,
+					255
+				);
+			}
+		}
+
 		for (const ObstacleSnapshot& obstacle :
 			snapshot.obstacles) {
-
-			drawTextureOrRectangle(
-				TextureId::Obstacle,
+			drawRectangle(
 				obstacle.bounds,
-				100,
-				100,
-				120
+				12,
+				14,
+				24
 			);
+
+			bool rendered = false;
+			if (mapVisual.obstacleTexture.has_value()) {
+				SDL_Texture* obstacleTexture =
+					assetManager_.texture(
+						*mapVisual.obstacleTexture
+					);
+
+				if (obstacleTexture != nullptr) {
+					const bool vertical =
+						obstacle.bounds.h > obstacle.bounds.w;
+					const SDL_FRect destination = vertical
+						? SDL_FRect{
+							obstacle.bounds.x +
+								(obstacle.bounds.w - obstacle.bounds.h) /
+								2.0f,
+							obstacle.bounds.y +
+								(obstacle.bounds.h - obstacle.bounds.w) /
+								2.0f,
+							obstacle.bounds.h,
+							obstacle.bounds.w
+						}
+						: SDL_FRect{
+							obstacle.bounds.x,
+							obstacle.bounds.y,
+							obstacle.bounds.w,
+							obstacle.bounds.h
+						};
+
+					rendered = SDL_RenderCopyExF(
+						renderer_,
+						obstacleTexture,
+						nullptr,
+						&destination,
+						vertical ? 90.0 : 0.0,
+						nullptr,
+						SDL_FLIP_NONE
+					) == 0;
+				}
+			}
+
+			if (!rendered) {
+				drawRectangle(
+					obstacle.bounds,
+					mapVisual.obstacleFallback.red,
+					mapVisual.obstacleFallback.green,
+					mapVisual.obstacleFallback.blue
+				);
+			}
+
+			SDL_SetRenderDrawColor(
+				renderer_,
+				mapVisual.obstacleFallback.red,
+				mapVisual.obstacleFallback.green,
+				mapVisual.obstacleFallback.blue,
+				255
+			);
+
+			for (int inset = 0; inset < 3; ++inset) {
+				const float insetValue =
+					static_cast<float>(inset);
+				const SDL_FRect outline{
+					obstacle.bounds.x + insetValue,
+					obstacle.bounds.y + insetValue,
+					obstacle.bounds.w - insetValue * 2.0f,
+					obstacle.bounds.h - insetValue * 2.0f
+				};
+
+				if (outline.w > 0.0f && outline.h > 0.0f) {
+					SDL_RenderDrawRectF(
+						renderer_,
+						&outline
+					);
+				}
+			}
 		}
 
 		for (const EnemySnapshot& enemy :
@@ -847,7 +976,10 @@ namespace neon::sdl {
 				enemy.bounds,
 				isShooter ? 255 : 220,
 				isShooter ? shooterGreen : 60,
-				isShooter ? 40 : 70
+				isShooter ? 40 : 70,
+				255,
+				255,
+				enemy.warningActive ? 160 : 255
 			);
 		}
 
@@ -856,7 +988,10 @@ namespace neon::sdl {
 			snapshot.player.bounds,
 			snapshot.player.invulnerable ? 255 : 0,
 			snapshot.player.invulnerable ? 255 : 220,
-			255
+			255,
+			255,
+			255,
+			snapshot.player.invulnerable ? 150 : 255
 		);
 
 		for (const ProjectileSnapshot& projectile :
@@ -873,7 +1008,10 @@ namespace neon::sdl {
 				projectile.bounds,
 				isEnemyProjectile ? 255 : 255,
 				isEnemyProjectile ? 70 : 220,
-				isEnemyProjectile ? 180 : 80
+				isEnemyProjectile ? 180 : 80,
+				255,
+				255,
+				255
 			);
 		}
 

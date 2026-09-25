@@ -2,14 +2,20 @@
 
 #include <array>
 #include <cstddef>
+#include <string>
 
+struct SDL_Renderer;
 struct SDL_Texture;
 
 namespace neon::sdl {
 
 	enum class TextureId : std::size_t {
-		Background,
-		Obstacle,
+		BackgroundCrossfire,
+		BackgroundSplitCorridors,
+		BackgroundBrokenDistrict,
+		ObstacleCrossfire,
+		ObstacleSplitCorridors,
+		ObstacleBrokenDistrict,
 		EnemyChaser,
 		EnemyShooter,
 		Player,
@@ -30,6 +36,12 @@ namespace neon::sdl {
 		void storeTexture(
 			TextureId id,
 			SDL_Texture* texture
+		);
+
+		bool loadTexture(
+			SDL_Renderer* renderer,
+			TextureId id,
+			const std::string& path
 		);
 
 		SDL_Texture* texture(
