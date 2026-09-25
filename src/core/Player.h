@@ -30,31 +30,23 @@ namespace neon {
 			Vec2 direction,
 			float dt,
 			const Rect& worldBounds) {
-
-			if (dt > 0.0f) {
-				invulnerabilityRemaining_ =
-					std::max(
-						0.0f,
-						invulnerabilityRemaining_ - dt
-					);
-			}
-
 			const float minX = worldBounds.x;
-			const float maxX = worldBounds.x + worldBounds.w - size_;
-
+			const float maxX =
+				worldBounds.x + worldBounds.w - size_;
 			const float minY = worldBounds.y;
-			const float maxY = worldBounds.y + worldBounds.h - size_;
+			const float maxY =
+				worldBounds.y + worldBounds.h - size_;
 
-			if (position_.x <= minX && direction.x < 0) {
+			if (position_.x <= minX && direction.x < 0.0f) {
 				direction.x = 0.0f;
 			}
-			if (position_.x >= maxX && direction.x > 0) {
+			if (position_.x >= maxX && direction.x > 0.0f) {
 				direction.x = 0.0f;
 			}
-			if (position_.y <= minY && direction.y < 0) {
+			if (position_.y <= minY && direction.y < 0.0f) {
 				direction.y = 0.0f;
 			}
-			if (position_.y >= maxY && direction.y > 0) {
+			if (position_.y >= maxY && direction.y > 0.0f) {
 				direction.y = 0.0f;
 			}
 
@@ -66,8 +58,36 @@ namespace neon {
 				direction.y /= directionLength;
 			}
 
-			position_.x += direction.x * speed_ * dt;
-			position_.y += direction.y * speed_ * dt;
+			updateResolvedMovement(
+				Vec2{
+					direction.x * speed_ * dt,
+					direction.y * speed_ * dt
+				},
+				dt,
+				worldBounds
+			);
+		}
+
+		void updateResolvedMovement(
+			Vec2 displacement,
+			float dt,
+			const Rect& worldBounds) {
+
+			if (dt > 0.0f) {
+				invulnerabilityRemaining_ =
+					std::max(
+						0.0f,
+						invulnerabilityRemaining_ - dt
+					);
+			}
+
+			const float minX = worldBounds.x;
+			const float maxX = worldBounds.x + worldBounds.w - size_;
+			const float minY = worldBounds.y;
+			const float maxY = worldBounds.y + worldBounds.h - size_;
+
+			position_.x += displacement.x;
+			position_.y += displacement.y;
 
 			position_.x = std::clamp(position_.x, minX, maxX);
 			position_.y = std::clamp(position_.y, minY, maxY);
@@ -87,6 +107,17 @@ namespace neon {
 
 		Rect hitbox() const {
 			const float inset = size_ * 0.2f;
+
+			return Rect{
+				position_.x + inset,
+				position_.y + inset,
+				size_ - inset * 2.0f,
+				size_ - inset * 2.0f
+			};
+		}
+
+		Rect movementHitbox() const {
+			const float inset = size_ * 0.125f;
 
 			return Rect{
 				position_.x + inset,

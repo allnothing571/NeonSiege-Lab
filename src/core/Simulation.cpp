@@ -213,11 +213,22 @@ namespace neon {
 
 		aimPosition_ = command.aimPosition;
 
-		Vec2 allowedMovement =
-			command.movement;
+		Vec2 desiredDirection = command.movement;
+		const float movementDirectionLength = std::sqrt(
+			desiredDirection.x * desiredDirection.x +
+			desiredDirection.y * desiredDirection.y
+		);
 
-		const float probeDistance =
-			config_.playerSpeed * fixedDt;
+		if (movementDirectionLength > 0.0f) {
+			desiredDirection.x /= movementDirectionLength;
+			desiredDirection.y /= movementDirectionLength;
+		}
+
+		const Vec2 desiredDisplacement{
+			desiredDirection.x * config_.playerSpeed * fixedDt,
+			desiredDirection.y * config_.playerSpeed * fixedDt
+		};
+		Vec2 resolvedDisplacement{};
 
 		const auto collidesWithObstacle =
 			[this](const Rect& candidate) {
@@ -233,40 +244,40 @@ namespace neon {
 			);
 			};
 
-		if (allowedMovement.x != 0.0f) {
+		if (desiredDisplacement.x != 0.0f) {
 			Rect horizontalCandidate =
-				player_.bounds();
+				player_.movementHitbox();
 
 			horizontalCandidate.x +=
-				allowedMovement.x > 0.0f
-				? probeDistance
-				: -probeDistance;
+				desiredDisplacement.x;
 
-			if (collidesWithObstacle(
+			if (!collidesWithObstacle(
 				horizontalCandidate)) {
 
-				allowedMovement.x = 0.0f;
+				resolvedDisplacement.x =
+					desiredDisplacement.x;
 			}
 		}
 
-		if (allowedMovement.y != 0.0f) {
+		if (desiredDisplacement.y != 0.0f) {
 			Rect verticalCandidate =
-				player_.bounds();
+				player_.movementHitbox();
 
+			verticalCandidate.x +=
+				resolvedDisplacement.x;
 			verticalCandidate.y +=
-				allowedMovement.y > 0.0f
-				? probeDistance
-				: -probeDistance;
+				desiredDisplacement.y;
 
-			if (collidesWithObstacle(
+			if (!collidesWithObstacle(
 				verticalCandidate)) {
 
-				allowedMovement.y = 0.0f;
+				resolvedDisplacement.y =
+					desiredDisplacement.y;
 			}
 		}
 
-		player_.update(
-			allowedMovement,
+		player_.updateResolvedMovement(
+			resolvedDisplacement,
 			fixedDt,
 			config_.worldBounds
 		);

@@ -96,6 +96,14 @@ int main() {
 
 	const neon::GameSnapshot slideSnapshot =
 		slideSimulation.snapshot();
+	const float movementInset =
+		slideSnapshot.player.bounds.w * 0.125f;
+	const neon::Rect slideMovementBounds{
+		slideSnapshot.player.bounds.x + movementInset,
+		slideSnapshot.player.bounds.y + movementInset,
+		slideSnapshot.player.bounds.w - movementInset * 2.0f,
+		slideSnapshot.player.bounds.h - movementInset * 2.0f
+	};
 
 	const bool slideMovementPassed =
 		nearlyEqual(
@@ -104,11 +112,58 @@ int main() {
 		) &&
 		nearlyEqual(
 			slideSnapshot.player.bounds.y,
-		148.0f
+			108.0f
 		) &&
 		!neon::intersects(
-			slideSnapshot.player.bounds,
+			slideMovementBounds,
 			slideSnapshot.obstacles[0].bounds
+		);
+
+	neon::GameplayConfig blockedConfig{};
+	blockedConfig.playerStartPosition = {
+		250.0f,
+		148.0f
+	};
+
+	neon::Simulation blockedSimulation{
+		blockedConfig
+	};
+
+	for (int stepIndex = 0;
+		stepIndex < 10;
+		++stepIndex) {
+
+		blockedSimulation.step(
+			slideCommand,
+			1.0f / 60.0f
+		);
+	}
+
+	const neon::GameSnapshot blockedSnapshot =
+		blockedSimulation.snapshot();
+	const float blockedMovementInset =
+		blockedSnapshot.player.bounds.w * 0.125f;
+	const neon::Rect blockedMovementBounds{
+		blockedSnapshot.player.bounds.x + blockedMovementInset,
+		blockedSnapshot.player.bounds.y + blockedMovementInset,
+		blockedSnapshot.player.bounds.w -
+			blockedMovementInset * 2.0f,
+		blockedSnapshot.player.bounds.h -
+			blockedMovementInset * 2.0f
+	};
+
+	const bool blockedMovementPassed =
+		nearlyEqual(
+			blockedSnapshot.player.bounds.x,
+			250.0f
+		) &&
+		nearlyEqual(
+			blockedSnapshot.player.bounds.y,
+			144.0f
+		) &&
+		!neon::intersects(
+			blockedMovementBounds,
+			blockedSnapshot.obstacles[0].bounds
 		);
 
 	const bool passed =
@@ -120,7 +175,8 @@ int main() {
 		!neon::intersects(wallBounds, separated) &&
 		!neon::intersects(wallBounds, edgeTouch) &&
 		simulationSnapshotPassed &&
-		slideMovementPassed;
+		slideMovementPassed &&
+		blockedMovementPassed;
 
 	return passed ? 0 : 1;
 }
