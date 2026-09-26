@@ -6,6 +6,7 @@ namespace neon {
 		Playing,
 		Paused,
 		Intermission,
+		UpgradeSelection,
 		Gameover,
 		Victory
 	};

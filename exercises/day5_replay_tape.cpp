@@ -170,6 +170,9 @@ int main() {
 		};
 
 		command.fireHeld = index % 4 == 0;
+		if (index == 20) {
+			command.upgradeSelection = 2;
+		}
 
 		if (index == 8 ||
 			index == 9) {
@@ -225,7 +228,8 @@ int main() {
 			tape.fixedDt
 		) ||
 		loaded.frames.size() !=
-		tape.frames.size()) {
+			tape.frames.size() ||
+		loaded.frames[20].command.upgradeSelection != 2) {
 		return 4;
 	}
 
@@ -304,6 +308,27 @@ int main() {
 		legacyTape.version != 1u ||
 		legacyTape.mapId != neon::MapId::Legacy) {
 		return 8;
+	}
+
+	std::stringstream versionTwoInput{
+		"NEON_REPLAY 2\n"
+		"SEED 1337\n"
+		"MAP 1\n"
+		"FIXED_DT 0.0166666675\n"
+		"FRAMES 1\n"
+		"FRAME 1 0 0 100 100 0 0 0 0\n"
+		"END\n"
+	};
+	neon::ReplayTape versionTwoTape{};
+	if (!neon::readReplay(
+		versionTwoInput,
+		versionTwoTape,
+		error
+	) ||
+		versionTwoTape.version != 2u ||
+		versionTwoTape.frames.size() != 1 ||
+		versionTwoTape.frames[0].command.upgradeSelection != -1) {
+		return 9;
 	}
 
 	return 0;

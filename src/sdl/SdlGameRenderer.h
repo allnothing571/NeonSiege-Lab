@@ -38,6 +38,10 @@ namespace neon::sdl {
 			bool enabled
 		) noexcept;
 
+		void setUpgradeSelection(
+			int selectedOption
+		) noexcept;
+
 		void resetPresentationEffects();
 
 		void renderMainMenu(
@@ -68,6 +72,11 @@ namespace neon::sdl {
 			int y
 		) const;
 
+		int upgradeOptionAt(
+			int x,
+			int y
+		) const;
+
 	private:
 		bool chineseText() const noexcept;
 		void renderFrontendBackground() const;
@@ -79,6 +88,9 @@ namespace neon::sdl {
 		) const;
 		void renderHud(const GameSnapshot& snapshot) const;
 		void renderStateOverlay(const GameSnapshot& snapshot) const;
+		void renderUpgradeOverlay(
+			const GameSnapshot& snapshot
+		) const;
 
 		SDL_Renderer* renderer_;
 		const AssetManager& assetManager_;
@@ -86,6 +98,7 @@ namespace neon::sdl {
 		SdlPresentationEffects presentationEffects_;
 		UiLanguage language_ = UiLanguage::Chinese;
 		bool pauseMenuReturnEnabled_ = false;
+		int selectedUpgradeOption_ = 1;
 		GameState lastRenderedState_ = GameState::Playing;
 	};
 }//namespace neon::sdl

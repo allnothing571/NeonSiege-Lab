@@ -17,6 +17,7 @@
 #include "core/GameEvent.h"
 #include "core/PresentationEvent.h"
 #include "core/ReplayFrame.h"
+#include "core/UpgradeSystem.h"
 
 namespace neon {
 
@@ -56,6 +57,8 @@ namespace neon {
 		Vec2 aimPosition_{};
 		WaveManager waveManager_;
 		std::mt19937 randomEngine_;
+		std::mt19937 upgradeRandomEngine_;
+		UpgradeSystem upgradeSystem_;
 
 		GameState state_ = GameState::Playing;
 		GameState pausedFromState_ = GameState::Playing;
@@ -75,5 +78,9 @@ namespace neon {
 		void recordReloadCompleted();
 		void recordPresentationEvent(PresentationEvent event);
 		bool startNextWave();
+		void beginIntermission();
+		void beginUpgradeSelection();
+		bool applyUpgradeSelection(int optionIndex);
+		void applyCurrentUpgradeStats(bool refillMagazine);
 	};
 }

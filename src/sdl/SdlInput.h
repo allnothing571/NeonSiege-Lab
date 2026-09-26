@@ -15,9 +15,14 @@ namespace neon::sdl {
 		bool leftPressed = false;
 		bool rightPressed = false;
 		bool pointerPressed = false;
+		bool pointerReleased = false;
 		bool pointerMoved = false;
 		int pointerX = 0;
 		int pointerY = 0;
+		int pointerPressedX = 0;
+		int pointerPressedY = 0;
+		int pointerReleasedX = 0;
+		int pointerReleasedY = 0;
 	};
 
 	class SdlInput {

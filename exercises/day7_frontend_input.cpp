@@ -63,6 +63,24 @@ int main() {
 	}
 
 	event = SDL_Event{};
+	event.type = SDL_MOUSEBUTTONUP;
+	event.button.button = SDL_BUTTON_LEFT;
+	event.button.x = 640;
+	event.button.y = 360;
+	input.handleEvent(event);
+	input.consumeCommand();
+	const neon::sdl::UiCommand pointerReleaseUi =
+		input.consumeUiCommand();
+	if (!pointerReleaseUi.pointerReleased ||
+		pointerReleaseUi.pointerX != 640 ||
+		pointerReleaseUi.pointerY != 360 ||
+		pointerReleaseUi.pointerReleasedX != 640 ||
+		pointerReleaseUi.pointerReleasedY != 360) {
+		SDL_Quit();
+		return 1;
+	}
+
+	event = SDL_Event{};
 	event.type = SDL_QUIT;
 	input.handleEvent(event);
 	const bool quitPassed = input.quitRequested();

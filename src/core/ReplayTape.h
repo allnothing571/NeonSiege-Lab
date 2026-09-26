@@ -13,7 +13,7 @@ namespace neon {
 	struct ReplayTape
 	{
 		static constexpr std::uint32_t minimumSupportedVersion = 1u;
-		static constexpr std::uint32_t currentVersion = 2u;
+		static constexpr std::uint32_t currentVersion = 3u;
 
 		std::uint32_t version = currentVersion;
 		std::uint32_t randomSeed = 0u;

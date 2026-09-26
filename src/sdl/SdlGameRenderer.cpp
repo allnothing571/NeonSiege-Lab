@@ -59,6 +59,40 @@ namespace neon::sdl {
 			};
 		}
 
+		std::array<SDL_Rect, 3> upgradeCardRects(
+			SDL_Renderer* renderer) {
+			const CanvasSize size = canvasSize(renderer);
+			constexpr int gap = 24;
+			const int availableWidth =
+				std::max(720, size.width - 80);
+			const int cardWidth =
+				std::min(340, (availableWidth - gap * 2) / 3);
+			const int totalWidth =
+				cardWidth * 3 + gap * 2;
+			const int startX =
+				(size.width - totalWidth) / 2;
+			const int cardHeight =
+				std::min(360, std::max(300, size.height - 300));
+			const int top =
+				std::max(150, (size.height - cardHeight) / 2);
+
+			return {
+				SDL_Rect{ startX, top, cardWidth, cardHeight },
+				SDL_Rect{
+					startX + cardWidth + gap,
+					top,
+					cardWidth,
+					cardHeight
+				},
+				SDL_Rect{
+					startX + (cardWidth + gap) * 2,
+					top,
+					cardWidth,
+					cardHeight
+				}
+			};
+		}
+
 		bool contains(
 			const SDL_Rect& rectangle,
 			int x,
@@ -87,6 +121,12 @@ namespace neon::sdl {
 	void SdlGameRenderer::setPauseMenuReturnEnabled(
 		bool enabled) noexcept {
 		pauseMenuReturnEnabled_ = enabled;
+	}
+
+	void SdlGameRenderer::setUpgradeSelection(
+		int selectedOption) noexcept {
+		selectedUpgradeOption_ =
+			std::clamp(selectedOption, 0, 2);
 	}
 
 	void SdlGameRenderer::resetPresentationEffects() {
@@ -230,25 +270,27 @@ namespace neon::sdl {
 			SDL_Color{ 255, 90, 150, 255 }
 		);
 
-		const std::array<std::string_view, 4> chineseLines{
+		const std::array<std::string_view, 5> chineseLines{
 			"WASD 移动    鼠标瞄准    左键开火",
 			"R 键换弹    Esc 暂停游戏",
 			"利用障碍物躲避敌人和远程子弹",
-			"清除全部敌人进入下一波，共十波"
+			"清除全部敌人进入下一波，共十波",
+			"第 2、4、6、8 波后必须选择一项升级"
 		};
-		const std::array<std::string_view, 4> englishLines{
+		const std::array<std::string_view, 5> englishLines{
 			"WASD MOVE    MOUSE AIM    LEFT CLICK FIRE",
 			"R RELOAD    ESC PAUSE",
 			"USE COVER TO AVOID ENEMIES AND PROJECTILES",
-			"CLEAR ALL ENEMIES TO ADVANCE THROUGH TEN WAVES"
+			"CLEAR ALL ENEMIES TO ADVANCE THROUGH TEN WAVES",
+			"CHOOSE AN UPGRADE AFTER WAVES 2, 4, 6 AND 8"
 		};
-		for (int index = 0; index < 4; ++index) {
+		for (int index = 0; index < 5; ++index) {
 			textRenderer_.drawCentered(
 				renderer_,
 				chinese ? chineseLines[index] : englishLines[index],
 				TextStyle::Body,
 				size.width / 2,
-				230 + index * 62,
+				205 + index * 54,
 				SDL_Color{ 220, 225, 238, 255 }
 			);
 		}
@@ -377,6 +419,21 @@ namespace neon::sdl {
 			x,
 			y
 		);
+	}
+
+	int SdlGameRenderer::upgradeOptionAt(
+		int x,
+		int y) const {
+		const auto rectangles =
+			upgradeCardRects(renderer_);
+		for (int index = 0;
+			index < static_cast<int>(rectangles.size());
+			++index) {
+			if (contains(rectangles[index], x, y)) {
+				return index;
+			}
+		}
+		return -1;
 	}
 
 
@@ -518,6 +575,259 @@ namespace neon::sdl {
 			outputWidth - 16,
 			34,
 			scoreColor
+		);
+
+		SDL_SetRenderDrawBlendMode(
+			renderer_,
+			previousBlendMode
+		);
+	}
+
+	void SdlGameRenderer::renderUpgradeOverlay(
+		const GameSnapshot& snapshot) const {
+		const CanvasSize size = canvasSize(renderer_);
+		const bool chinese = chineseText();
+		const auto cardRectangles =
+			upgradeCardRects(renderer_);
+
+		SDL_BlendMode previousBlendMode =
+			SDL_BLENDMODE_NONE;
+		SDL_GetRenderDrawBlendMode(
+			renderer_,
+			&previousBlendMode
+		);
+		SDL_SetRenderDrawBlendMode(
+			renderer_,
+			SDL_BLENDMODE_BLEND
+		);
+
+		const SDL_Rect screen{
+			0,
+			0,
+			size.width,
+			size.height
+		};
+		SDL_SetRenderDrawColor(
+			renderer_,
+			4,
+			5,
+			14,
+			220
+		);
+		SDL_RenderFillRect(renderer_, &screen);
+
+		textRenderer_.drawCentered(
+			renderer_,
+			chinese
+				? "第 " + std::to_string(snapshot.currentWave) + " 波完成"
+				: "WAVE " + std::to_string(snapshot.currentWave) + " COMPLETE",
+			TextStyle::Title,
+			size.width / 2,
+			70,
+			SDL_Color{ 255, 105, 165, 255 }
+		);
+		textRenderer_.drawCentered(
+			renderer_,
+			chinese ? "选择一项升级" : "CHOOSE ONE UPGRADE",
+			TextStyle::Body,
+			size.width / 2,
+			116,
+			SDL_Color{ 170, 225, 255, 255 }
+		);
+
+		for (int optionIndex = 0;
+			optionIndex < snapshot.upgradeOptionCount &&
+			optionIndex < static_cast<int>(cardRectangles.size());
+			++optionIndex) {
+			const UpgradeOptionSnapshot& option =
+				snapshot.upgradeOptions[optionIndex];
+			const SDL_Rect card =
+				cardRectangles[optionIndex];
+			const bool selected =
+				optionIndex == selectedUpgradeOption_;
+
+			SDL_SetRenderDrawColor(
+				renderer_,
+				selected ? 31 : 13,
+				selected ? 45 : 23,
+				selected ? 70 : 42,
+				selected ? 248 : 238
+			);
+			SDL_RenderFillRect(renderer_, &card);
+			SDL_SetRenderDrawColor(
+				renderer_,
+				selected ? 255 : 65,
+				selected ? 85 : 170,
+				selected ? 165 : 220,
+				255
+			);
+			SDL_RenderDrawRect(renderer_, &card);
+			if (selected) {
+				const SDL_Rect inner{
+					card.x + 3,
+					card.y + 3,
+					card.w - 6,
+					card.h - 6
+				};
+				SDL_RenderDrawRect(renderer_, &inner);
+			}
+
+			std::string name;
+			std::string description;
+			std::vector<std::string> valueLines;
+			std::ostringstream values;
+			values << std::fixed << std::setprecision(2);
+
+			switch (option.type) {
+			case UpgradeType::HighVoltageRounds:
+				name = chinese ? "高压弹药" : "HIGH-VOLTAGE ROUNDS";
+				description = chinese
+					? "强化弹头，提高单发伤害"
+					: "INCREASE DAMAGE PER SHOT";
+				valueLines.push_back(
+					(chinese ? "伤害 " : "DAMAGE ") +
+					std::to_string(snapshot.upgradeStats.projectileDamage) +
+					" -> " +
+					std::to_string(option.nextStats.projectileDamage)
+				);
+				break;
+			case UpgradeType::FireRate:
+				name = chinese ? "射速升级" : "FIRE RATE";
+				description = chinese
+					? "缩短射击间隔"
+					: "REDUCE TIME BETWEEN SHOTS";
+				valueLines.push_back(
+					(chinese ? "射速加成 " : "RATE BONUS ") +
+					std::to_string(option.currentLevel * 10) +
+					"% -> " +
+					std::to_string((option.currentLevel + 1) * 10) +
+					"%"
+				);
+				break;
+			case UpgradeType::AmmoSystem:
+				name = chinese ? "弹药系统" : "AMMO SYSTEM";
+				description = chinese
+					? "扩大弹匣并加快换弹"
+					: "MORE AMMO, FASTER RELOAD";
+				valueLines.push_back(
+					(chinese ? "弹匣 " : "MAGAZINE ") +
+					std::to_string(snapshot.upgradeStats.magazineCapacity) +
+					" -> " +
+					std::to_string(option.nextStats.magazineCapacity)
+				);
+				values.str(std::string{});
+				values.clear();
+				values << std::fixed << std::setprecision(2)
+					<< snapshot.upgradeStats.reloadDuration
+					<< "s -> " << option.nextStats.reloadDuration << "s";
+				valueLines.push_back(
+					(chinese ? "换弹 " : "RELOAD ") + values.str()
+				);
+				break;
+			case UpgradeType::ArmorCore:
+				name = chinese ? "装甲核心" : "ARMOR CORE";
+				description = chinese
+					? "提升生命上限并恢复生命"
+					: "GAIN MAX HEALTH AND HEAL";
+				valueLines.push_back(
+					(chinese ? "生命上限 " : "MAX HEALTH ") +
+					std::to_string(snapshot.upgradeStats.maximumHealth) +
+					" -> " +
+					std::to_string(option.nextStats.maximumHealth)
+				);
+				valueLines.push_back(
+					chinese ? "立即恢复 15" : "HEAL 15 NOW"
+				);
+				break;
+			case UpgradeType::BallisticCalibration:
+				name = chinese ? "弹道校准" : "BALLISTIC CALIBRATION";
+				description = chinese
+					? "降低散布并提高弹速"
+					: "TIGHTER SPREAD, FASTER SHOTS";
+				values.str(std::string{});
+				values.clear();
+				values << std::fixed << std::setprecision(1)
+					<< snapshot.upgradeStats.projectileSpreadDegrees
+					<< " -> " << option.nextStats.projectileSpreadDegrees;
+				valueLines.push_back(
+					(chinese ? "散布 " : "SPREAD ") + values.str()
+				);
+				valueLines.push_back(
+					(chinese ? "弹速 " : "SHOT SPEED ") +
+					std::to_string(static_cast<int>(
+						snapshot.upgradeStats.projectileSpeed)) +
+					" -> " +
+					std::to_string(static_cast<int>(
+						option.nextStats.projectileSpeed))
+				);
+				break;
+			default:
+				continue;
+			}
+
+			const int centerX = card.x + card.w / 2;
+			const SDL_Color primaryColor = selected
+				? SDL_Color{ 255, 225, 240, 255 }
+				: SDL_Color{ 215, 230, 245, 255 };
+			textRenderer_.drawCentered(
+				renderer_,
+				name,
+				TextStyle::Body,
+				centerX,
+				card.y + 48,
+				primaryColor
+			);
+			textRenderer_.drawCentered(
+				renderer_,
+				(chinese ? "等级 " : "LEVEL ") +
+					std::to_string(option.currentLevel + 1) +
+					" / " +
+					std::to_string(option.maximumLevel),
+				TextStyle::Body,
+				centerX,
+				card.y + 92,
+				SDL_Color{ 110, 205, 255, 255 }
+			);
+
+			int lineY = card.y + 154;
+			for (const std::string& line : valueLines) {
+				textRenderer_.drawCentered(
+					renderer_,
+					line,
+					TextStyle::Body,
+					centerX,
+					lineY,
+					SDL_Color{ 255, 220, 125, 255 }
+				);
+				lineY += 42;
+			}
+			textRenderer_.drawCentered(
+				renderer_,
+				description,
+				TextStyle::Body,
+				centerX,
+				card.y + card.h - 48,
+				SDL_Color{ 190, 205, 220, 255 }
+			);
+		}
+
+		textRenderer_.drawCentered(
+			renderer_,
+			chinese
+				? "[A/D 或方向键] 选择       [Enter] 确认"
+				: "[A/D OR ARROWS] SELECT       [ENTER] CONFIRM",
+			TextStyle::Body,
+			size.width / 2,
+			size.height - 54,
+			SDL_Color{ 235, 240, 250, 255 }
+		);
+		textRenderer_.drawCentered(
+			renderer_,
+			chinese ? "也可使用鼠标悬停并点击" : "MOUSE HOVER AND CLICK ALSO SUPPORTED",
+			TextStyle::Body,
+			size.width / 2,
+			size.height - 22,
+			SDL_Color{ 145, 180, 205, 255 }
 		);
 
 		SDL_SetRenderDrawBlendMode(
@@ -1067,7 +1377,10 @@ namespace neon::sdl {
 
 		renderHud(snapshot);
 
-		if (snapshot.state != GameState::Playing) {
+		if (snapshot.state == GameState::UpgradeSelection) {
+			renderUpgradeOverlay(snapshot);
+		}
+		else if (snapshot.state != GameState::Playing) {
 			renderStateOverlay(snapshot);
 		}
 

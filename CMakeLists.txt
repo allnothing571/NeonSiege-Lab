@@ -89,6 +89,10 @@ target_sources(
     src/core/InputCommand.h
     src/core/GameState.h
     src/core/GameplayConfig.h
+    src/core/UpgradeType.h
+    src/core/UpgradeSystem.h
+    src/core/UpgradeSystem.cpp
+    src/core/WaveDifficulty.h
     src/core/EnemyKind.h
     src/core/GameSnapshot.h
     src/core/EntityId.h
@@ -225,6 +229,42 @@ add_executable(
     CommercialAssetCatalog
     exercises/commercial_asset_catalog.cpp
 )
+
+add_executable(
+    CommercialUpgradeSystem
+    exercises/commercial_upgrade_system.cpp
+)
+
+target_link_libraries(
+    CommercialUpgradeSystem
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        CommercialUpgradeSystem
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    CommercialWaveDifficulty
+    exercises/commercial_wave_difficulty.cpp
+)
+
+target_link_libraries(
+    CommercialWaveDifficulty
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        CommercialWaveDifficulty
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
 
 target_link_libraries(
     CommercialAssetCatalog
@@ -1107,6 +1147,8 @@ if(BUILD_TESTING)
     add_test(NAME AutoDodgeDetector COMMAND Day6AutoDodgeDetector)
     add_test(NAME MapCatalog COMMAND CommercialMapCatalog)
     add_test(NAME AssetCatalog COMMAND CommercialAssetCatalog)
+    add_test(NAME UpgradeSystem COMMAND CommercialUpgradeSystem)
+    add_test(NAME WaveDifficulty COMMAND CommercialWaveDifficulty)
     add_test(NAME EnemyObstacleDamage COMMAND Day7EnemyObstacleDamage)
     add_test(NAME AutoReload COMMAND Day7AutoReload)
     add_test(NAME SpawnSafety COMMAND Day7SpawnSafety)

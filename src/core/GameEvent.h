@@ -24,6 +24,8 @@ namespace neon {
 		ReloadCompleted,
 		WaveStarted,
 		WaveCompleted,
+		UpgradeOffered,
+		UpgradeSelected,
 		GameStateChanged
 	};
 

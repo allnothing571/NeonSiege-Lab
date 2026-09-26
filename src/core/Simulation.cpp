@@ -7,6 +7,7 @@
 #include "core/AimSpread.h"
 #include "core/LineOfSight.h"
 #include "core/MapCatalog.h"
+#include "core/WaveDifficulty.h"
 
 namespace neon {
 
@@ -25,7 +26,9 @@ namespace neon {
 			config_.fireInterval,
 			config_.reloadDuration
 		),
-		randomEngine_(config_.randomSeed) {
+		randomEngine_(config_.randomSeed),
+		upgradeRandomEngine_(
+			config_.randomSeed ^ 0x9E3779B9u) {
 		config_.maximumWaves =
 			std::max(1, config_.maximumWaves);
 		config_.waveIntermissionDuration =
@@ -52,6 +55,13 @@ namespace neon {
 		score_ = 0;
 
 		randomEngine_.seed(config_.randomSeed);
+		std::seed_seq upgradeSeed{
+			config_.randomSeed,
+			0x9E3779B9u,
+			0x85EBCA6Bu
+		};
+		upgradeRandomEngine_.seed(upgradeSeed);
+		upgradeSystem_.reset();
 
 		player_.reset(
 			playerStartPosition,
@@ -59,6 +69,7 @@ namespace neon {
 		);
 
 		weapon_.reset();
+		applyCurrentUpgradeStats(true);
 
 		aimPosition_ = player_.center();
 
@@ -142,7 +153,8 @@ namespace neon {
 				state_;
 
 			if (state_ == GameState::Playing ||
-				state_ == GameState::Intermission) {
+				state_ == GameState::Intermission ||
+				state_ == GameState::UpgradeSelection) {
 				pausedFromState_ = state_;
 				state_ = GameState::Paused;
 			}
@@ -161,6 +173,15 @@ namespace neon {
 				recordEvent(event);
 			}
 
+			return;
+		}
+
+		if (state_ == GameState::UpgradeSelection) {
+			if (command.upgradeSelection >= 0) {
+				applyUpgradeSelection(
+					command.upgradeSelection
+				);
+			}
 			return;
 		}
 
@@ -352,7 +373,9 @@ namespace neon {
 							config_.enemyProjectileSize,
 							config_.enemyProjectileSpeed,
 							ProjectileFaction::Enemy,
-							config_.enemyProjectileDamage,
+							scaledEnemyDamage(
+								config_.enemyProjectileDamage,
+								waveManager_.currentWave()),
 							config_.enemyProjectileLifetime,
 							nextEntityId_++
 						);
@@ -378,10 +401,13 @@ namespace neon {
 				player_.hitbox(),
 				enemy.hitbox())) {
 
-				const bool damageApplied =
-					player_.takeDamage(
-						config_.enemyContactDamage
+				const int contactDamage =
+					scaledEnemyDamage(
+						config_.enemyContactDamage,
+						waveManager_.currentWave()
 					);
+				const bool damageApplied =
+					player_.takeDamage(contactDamage);
 
 				if (damageApplied) {
 					GameEvent damageEvent{};
@@ -396,7 +422,7 @@ namespace neon {
 					damageEvent.targetKind =
 						GameEntityKind::Player;
 					damageEvent.value =
-						config_.enemyContactDamage;
+						contactDamage;
 					damageEvent.position =
 						player_.center();
 
@@ -410,7 +436,7 @@ namespace neon {
 					presentationEvent.targetId =
 						player_.id();
 					presentationEvent.value =
-						config_.enemyContactDamage;
+						contactDamage;
 					presentationEvent.position =
 						player_.center();
 					recordPresentationEvent(presentationEvent);
@@ -755,31 +781,12 @@ namespace neon {
 					static_cast<int>(state_);
 				recordEvent(stateEvent);
 			}
-			else if (config_.waveIntermissionDuration <= 0.0f) {
-				if (startNextWave()) {
-					state_ = GameState::Playing;
-				}
-				else {
-					state_ = GameState::Intermission;
-					intermissionRemaining_ = 0.0f;
-					GameEvent stateEvent{};
-					stateEvent.type =
-						GameEventType::GameStateChanged;
-					stateEvent.value =
-						static_cast<int>(state_);
-					recordEvent(stateEvent);
-				}
+			else if (
+				waveManager_.currentWave() % 2 == 0) {
+				beginUpgradeSelection();
 			}
 			else {
-				state_ = GameState::Intermission;
-				intermissionRemaining_ =
-					config_.waveIntermissionDuration;
-				GameEvent stateEvent{};
-				stateEvent.type =
-					GameEventType::GameStateChanged;
-				stateEvent.value =
-					static_cast<int>(state_);
-				recordEvent(stateEvent);
+				beginIntermission();
 			}
 		}
 
@@ -799,6 +806,8 @@ namespace neon {
 
 		if (state_ == GameState::Playing &&
 			weapon_.fireRequested()) {
+			const UpgradeStats upgradeStats =
+				upgradeSystem_.stats(config_);
 
 			const Vec2 playerCenter =
 				player_.center();
@@ -828,7 +837,7 @@ namespace neon {
 					const float maximumSpreadRadians =
 						std::max(
 							0.0f,
-							config_.playerProjectileSpreadDegrees
+							upgradeStats.projectileSpreadDegrees
 						) * pi / 180.0f;
 
 					std::uniform_real_distribution<float>
@@ -850,9 +859,9 @@ namespace neon {
 						playerCenter,
 						direction,
 						config_.playerProjectileSize,
-						config_.playerProjectileSpeed,
+						upgradeStats.projectileSpeed,
 						ProjectileFaction::Player,
-						config_.playerProjectileDamage,
+						upgradeStats.projectileDamage,
 						config_.playerProjectileLifetime,
 						nextEntityId_++
 					);
@@ -889,7 +898,7 @@ namespace neon {
 		result.mapId = currentMapId_;
 		result.player.bounds = player_.bounds();
 		result.player.health = player_.health();
-		result.player.maxHealth = config_.playerInitialHealth;
+		result.player.maxHealth = player_.maxHealth();
 		result.player.alive = player_.isAlive();
 
 		result.player.invulnerable =
@@ -913,6 +922,27 @@ namespace neon {
 		result.maximumWaves = config_.maximumWaves;
 		result.intermissionRemaining =
 			intermissionRemaining_;
+		result.upgradeStats =
+			upgradeSystem_.stats(config_);
+		result.upgradeOptionCount =
+			upgradeSystem_.offerCount();
+
+		for (int optionIndex = 0;
+			optionIndex < result.upgradeOptionCount;
+			++optionIndex) {
+			const UpgradeType type =
+				upgradeSystem_.offerAt(optionIndex);
+			result.upgradeOptions[optionIndex] =
+				UpgradeOptionSnapshot{
+					type,
+					upgradeSystem_.level(type),
+					UpgradeSystem::maximumLevel(type),
+					upgradeSystem_.statsAfter(
+						config_,
+						type
+					)
+				};
+		}
 
 		result.obstacles.reserve(
 			obstacles_.size()
@@ -1020,6 +1050,111 @@ namespace neon {
 
 		event.tick = tick_;
 		presentationEvents_.push_back(event);
+	}
+
+	void Simulation::beginIntermission() {
+		const GameState previousState = state_;
+		intermissionRemaining_ =
+			config_.waveIntermissionDuration;
+
+		if (intermissionRemaining_ <= 0.0f &&
+			startNextWave()) {
+			state_ = GameState::Playing;
+		}
+		else {
+			state_ = GameState::Intermission;
+		}
+
+		if (state_ != previousState) {
+			GameEvent stateEvent{};
+			stateEvent.type =
+				GameEventType::GameStateChanged;
+			stateEvent.value =
+				static_cast<int>(state_);
+			recordEvent(stateEvent);
+		}
+	}
+
+	void Simulation::beginUpgradeSelection() {
+		if (!upgradeSystem_.generateOffers(
+			upgradeRandomEngine_)) {
+			beginIntermission();
+			return;
+		}
+
+		intermissionRemaining_ = 0.0f;
+		state_ = GameState::UpgradeSelection;
+
+		for (int optionIndex = 0;
+			optionIndex < upgradeSystem_.offerCount();
+			++optionIndex) {
+			GameEvent offeredEvent{};
+			offeredEvent.type =
+				GameEventType::UpgradeOffered;
+			offeredEvent.sourceId =
+				static_cast<EntityId>(optionIndex + 1);
+			offeredEvent.value = static_cast<int>(
+				upgradeSystem_.offerAt(optionIndex)
+			);
+			recordEvent(offeredEvent);
+		}
+
+		GameEvent stateEvent{};
+		stateEvent.type =
+			GameEventType::GameStateChanged;
+		stateEvent.value =
+			static_cast<int>(state_);
+		recordEvent(stateEvent);
+	}
+
+	bool Simulation::applyUpgradeSelection(
+		int optionIndex) {
+		const UpgradeType selectedType =
+			upgradeSystem_.offerAt(optionIndex);
+		if (selectedType == UpgradeType::Count ||
+			!upgradeSystem_.applyOffer(optionIndex)) {
+			return false;
+		}
+
+		applyCurrentUpgradeStats(true);
+		projectiles_.clear();
+
+		GameEvent selectedEvent{};
+		selectedEvent.type =
+			GameEventType::UpgradeSelected;
+		selectedEvent.sourceKind =
+			GameEntityKind::Player;
+		selectedEvent.sourceId = player_.id();
+		selectedEvent.targetId =
+			static_cast<EntityId>(optionIndex + 1);
+		selectedEvent.value =
+			static_cast<int>(selectedType);
+		selectedEvent.position =
+			player_.center();
+		recordEvent(selectedEvent);
+
+		beginIntermission();
+		return true;
+	}
+
+	void Simulation::applyCurrentUpgradeStats(
+		bool refillMagazine) {
+		const UpgradeStats stats =
+			upgradeSystem_.stats(config_);
+		const int healthIncrease =
+			stats.maximumHealth - player_.maxHealth();
+		if (healthIncrease > 0) {
+			player_.increaseMaximumHealth(
+				healthIncrease
+			);
+		}
+
+		weapon_.configure(
+			stats.magazineCapacity,
+			stats.fireInterval,
+			stats.reloadDuration,
+			refillMagazine
+		);
 	}
 
 	bool Simulation::startNextWave() {

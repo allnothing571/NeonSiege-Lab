@@ -191,6 +191,12 @@ int runNeonSiege(
 		: AppScreen::MainMenu;
 	int mainMenuSelection = 0;
 	int settingsSelection = 0;
+	int upgradeSelection = 1;
+	bool upgradeScreenActive = false;
+	constexpr double upgradeInputLockDuration = 0.30;
+	double upgradeInputLockRemaining = 0.0;
+	bool upgradeInputArmed = false;
+	int upgradePointerPressedOption = -1;
 	bool howToPlayBackHovered = false;
 	std::mt19937 mapSelectionEngine{
 		std::random_device{}()
@@ -210,6 +216,11 @@ int runNeonSiege(
 		screen = AppScreen::MainMenu;
 		mainMenuSelection = 0;
 		pendingReloadPressed = false;
+		upgradeSelection = 1;
+		upgradeScreenActive = false;
+		upgradeInputLockRemaining = 0.0;
+		upgradeInputArmed = false;
+		upgradePointerPressedOption = -1;
 		accumulator = 0.0;
 		simulation.consumePresentationEvents();
 		gameRenderer.resetPresentationEffects();
@@ -231,6 +242,11 @@ int runNeonSiege(
 		simulation.consumePresentationEvents();
 		gameRenderer.resetPresentationEffects();
 		pendingReloadPressed = false;
+		upgradeSelection = 1;
+		upgradeScreenActive = false;
+		upgradeInputLockRemaining = 0.0;
+		upgradeInputArmed = false;
+		upgradePointerPressedOption = -1;
 		accumulator = 0.0;
 		previousCounter = SDL_GetPerformanceCounter();
 		screen = AppScreen::Gameplay;
@@ -444,13 +460,129 @@ int runNeonSiege(
 			continue;
 		}
 
+		if (stateBeforeInput ==
+			neon::GameState::UpgradeSelection) {
+			const neon::GameSnapshot upgradeSnapshot =
+				simulation.snapshot();
+			const int optionCount = std::max(
+				1,
+				upgradeSnapshot.upgradeOptionCount
+			);
+
+			if (!upgradeScreenActive) {
+				upgradeSelection =
+					std::min(1, optionCount - 1);
+				upgradeScreenActive = true;
+				upgradeInputLockRemaining =
+					upgradeInputLockDuration;
+				upgradeInputArmed = false;
+				upgradePointerPressedOption = -1;
+			}
+
+			if (upgradeInputLockRemaining > 0.0) {
+				upgradeInputLockRemaining = std::max(
+					0.0,
+					upgradeInputLockRemaining - frameTime
+				);
+				upgradePointerPressedOption = -1;
+			}
+			else if (!command.fireHeld) {
+				upgradeInputArmed = true;
+			}
+
+			if (uiCommand.pointerMoved) {
+				const int hoveredOption =
+					gameRenderer.upgradeOptionAt(
+						uiCommand.pointerX,
+						uiCommand.pointerY
+					);
+				if (hoveredOption >= 0 &&
+					hoveredOption < optionCount) {
+					upgradeSelection = hoveredOption;
+				}
+			}
+
+			if (uiCommand.leftPressed) {
+				upgradeSelection = wrappedSelection(
+					upgradeSelection,
+					-1,
+					optionCount
+				);
+			}
+			if (uiCommand.rightPressed) {
+				upgradeSelection = wrappedSelection(
+					upgradeSelection,
+					1,
+					optionCount
+				);
+			}
+
+			bool confirmUpgrade =
+				upgradeInputArmed &&
+				uiCommand.confirmPressed;
+			if (upgradeInputArmed &&
+				uiCommand.pointerPressed) {
+				const int pressedOption =
+					gameRenderer.upgradeOptionAt(
+						uiCommand.pointerPressedX,
+						uiCommand.pointerPressedY
+					);
+				if (pressedOption >= 0 &&
+					pressedOption < optionCount) {
+					upgradeSelection = pressedOption;
+					upgradePointerPressedOption =
+						pressedOption;
+				}
+				else {
+					upgradePointerPressedOption = -1;
+				}
+			}
+
+			if (upgradeInputArmed &&
+				uiCommand.pointerReleased) {
+				const int releasedOption =
+					gameRenderer.upgradeOptionAt(
+						uiCommand.pointerReleasedX,
+						uiCommand.pointerReleasedY
+					);
+				confirmUpgrade =
+					upgradePointerPressedOption >= 0 &&
+					releasedOption ==
+						upgradePointerPressedOption;
+				if (confirmUpgrade) {
+					upgradeSelection = releasedOption;
+				}
+				upgradePointerPressedOption = -1;
+			}
+
+			if (confirmUpgrade) {
+				command.upgradeSelection =
+					upgradeSelection;
+				upgradeInputArmed = false;
+			}
+			pendingReloadPressed = false;
+		}
+		else if (stateBeforeInput !=
+			neon::GameState::Paused) {
+			upgradeScreenActive = false;
+			upgradeInputLockRemaining = 0.0;
+			upgradeInputArmed = false;
+			upgradePointerPressedOption = -1;
+		}
+
+		gameRenderer.setUpgradeSelection(
+			upgradeSelection
+		);
+
 		pendingReloadPressed =
 			pendingReloadPressed ||
-			command.reloadPressed;
+			(stateBeforeInput == neon::GameState::Playing &&
+				command.reloadPressed);
 		command.reloadPressed = pendingReloadPressed;
 
 		const bool stateCommand =
 			command.pausePressed ||
+			command.upgradeSelection >= 0 ||
 			(command.restartPressed &&
 				isTerminalState(simulation.state()));
 		if (stateCommand) {
@@ -462,6 +594,7 @@ int runNeonSiege(
 			command.pausePressed = false;
 			command.restartPressed = false;
 			command.reloadPressed = false;
+			command.upgradeSelection = -1;
 			accumulator = 0.0;
 		}
 		else if (

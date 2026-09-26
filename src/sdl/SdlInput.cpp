@@ -31,6 +31,18 @@ namespace neon::sdl {
 			pendingUiCommand_.pointerPressed = true;
 			pendingUiCommand_.pointerX = event.button.x;
 			pendingUiCommand_.pointerY = event.button.y;
+			pendingUiCommand_.pointerPressedX = event.button.x;
+			pendingUiCommand_.pointerPressedY = event.button.y;
+			return;
+		}
+
+		if (event.type == SDL_MOUSEBUTTONUP &&
+			event.button.button == SDL_BUTTON_LEFT) {
+			pendingUiCommand_.pointerReleased = true;
+			pendingUiCommand_.pointerX = event.button.x;
+			pendingUiCommand_.pointerY = event.button.y;
+			pendingUiCommand_.pointerReleasedX = event.button.x;
+			pendingUiCommand_.pointerReleasedY = event.button.y;
 			return;
 		}
 

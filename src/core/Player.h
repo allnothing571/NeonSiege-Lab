@@ -19,7 +19,8 @@ namespace neon {
 			position_(position),
 			size_(size),
 			speed_(speed),
-			health_(health),
+			health_(std::max(0, health)),
+			maxHealth_(std::max(0, health)),
 			invulnerabilityDuration_(
 				std::max(0.0f, invulnerabilityDuration)),
 			invulnerabilityRemaining_(0.0f)
@@ -151,12 +152,25 @@ namespace neon {
 
 		void reset(Vec2 position, int health) {
 			position_ = position;
-			health_ = health;
+			maxHealth_ = std::max(0, health);
+			health_ = maxHealth_;
 			invulnerabilityRemaining_ = 0.0f;
+		}
+
+		void increaseMaximumHealth(int amount) {
+			if (amount <= 0) {
+				return;
+			}
+			maxHealth_ += amount;
+			health_ = std::min(maxHealth_, health_ + amount);
 		}
 
 		int health() const {
 			return health_;
+		}
+
+		int maxHealth() const {
+			return maxHealth_;
 		}
 
 	private:
@@ -164,6 +178,7 @@ namespace neon {
 		float size_;
 		float speed_;
 		int health_;
+		int maxHealth_;
 		float invulnerabilityDuration_;
 		float invulnerabilityRemaining_;
 		EntityId id_;
