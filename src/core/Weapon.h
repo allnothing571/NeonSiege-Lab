@@ -28,6 +28,34 @@ namespace neon {
 			reloadCompletedThisUpdate_ = false;
 		}
 
+		void configure(
+			int magazineCapacity,
+			float fireInterval,
+			float reloadDuration,
+			bool refillMagazine) {
+			magazineCapacity_ =
+				std::max(0, magazineCapacity);
+			fireInterval_ =
+				std::max(0.0f, fireInterval);
+			reloadDuration_ =
+				std::max(0.0f, reloadDuration);
+
+			if (refillMagazine) {
+				ammoInMagazine_ = magazineCapacity_;
+				cooldownRemaining_ = 0.0f;
+				reloadRemaining_ = 0.0f;
+				fireRequested_ = false;
+				reloadStartedThisUpdate_ = false;
+				reloadCompletedThisUpdate_ = false;
+			}
+			else {
+				ammoInMagazine_ = std::min(
+					ammoInMagazine_,
+					magazineCapacity_
+				);
+			}
+		}
+
 		void update(
 			float dt,
 			bool fireHeld,
@@ -103,6 +131,14 @@ namespace neon {
 
 		int magazineCapacity() const {
 			return magazineCapacity_;
+		}
+
+		float fireInterval() const {
+			return fireInterval_;
+		}
+
+		float reloadDuration() const {
+			return reloadDuration_;
 		}
 
 		bool isReloading() const {

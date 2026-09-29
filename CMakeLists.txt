@@ -25,6 +25,43 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(SDL2TTF_SAMPLES OFF CACHE BOOL "" FORCE)
 set(SDL2TTF_VENDORED ON CACHE BOOL "" FORCE)
 set(SDL2TTF_HARFBUZZ OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_INSTALL OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_SAMPLES OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_TESTS OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_VENDORED OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_BACKEND_STB ON CACHE BOOL "" FORCE)
+set(SDL2IMAGE_AVIF OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_BMP OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_GIF OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_JPG OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_JXL OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_LBM OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_PCX OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_PNG ON CACHE BOOL "" FORCE)
+set(SDL2IMAGE_PNM OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_QOI OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_SVG OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_TGA OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_TIF OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_WEBP OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_XCF OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_XPM OFF CACHE BOOL "" FORCE)
+set(SDL2IMAGE_XV OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_INSTALL OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_SAMPLES OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_DEPS_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_VENDORED OFF CACHE BOOL "" FORCE)
+
+set(SDL2MIXER_CMD OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_FLAC OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_GME OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_MOD OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_MP3 OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_MIDI OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_OPUS OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_VORBIS "" CACHE STRING "" FORCE)
+set(SDL2MIXER_WAVE ON CACHE BOOL "" FORCE)
+set(SDL2MIXER_WAVPACK OFF CACHE BOOL "" FORCE)
 
 FetchContent_Declare(
     SDL2
@@ -33,6 +70,22 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(SDL2)
+
+FetchContent_Declare(
+    SDL2_image
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL_image.git
+    GIT_TAG release-2.8.12
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(SDL2_image)
+
+FetchContent_Declare(
+    SDL2_mixer
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
+    GIT_TAG release-2.8.2
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(SDL2_mixer)
 
 FetchContent_Declare(
     SDL2_ttf
@@ -59,6 +112,10 @@ target_sources(
     src/core/InputCommand.h
     src/core/GameState.h
     src/core/GameplayConfig.h
+    src/core/UpgradeType.h
+    src/core/UpgradeSystem.h
+    src/core/UpgradeSystem.cpp
+    src/core/WaveDifficulty.h
     src/core/EnemyKind.h
     src/core/GameSnapshot.h
     src/core/EntityId.h
@@ -88,6 +145,9 @@ target_sources(
     src/core/AutoDodgeDetector.cpp
     src/core/Collision.h
     src/core/Obstacle.h
+    src/core/MapDefinition.h
+    src/core/MapCatalog.h
+    src/core/MapCatalog.cpp
     src/core/LineOfSight.h
     src/core/AimSpread.h
     src/core/SpawnPlacement.h
@@ -115,10 +175,18 @@ add_library(
     src/sdl/SdlGameRenderer.cpp
     src/sdl/SdlPaths.h
     src/sdl/SdlPaths.cpp
+    src/sdl/SdlAppSettings.h
+    src/sdl/SdlAppSettings.cpp
     src/sdl/SdlInput.h
     src/sdl/SdlInput.cpp
     src/sdl/AssetManager.h
     src/sdl/AssetManager.cpp
+    src/sdl/SdlAssetCatalog.h
+    src/sdl/SdlAssetCatalog.cpp
+    src/sdl/SdlAudioCatalog.h
+    src/sdl/SdlAudioCatalog.cpp
+    src/sdl/SdlAudioManager.h
+    src/sdl/SdlAudioManager.cpp
     src/sdl/SdlTextRenderer.h
     src/sdl/SdlTextRenderer.cpp
     src/sdl/SdlPresentationEffects.h
@@ -136,6 +204,8 @@ target_link_libraries(
     PUBLIC neon_core
     PRIVATE
     SDL2::SDL2-static
+    SDL2_image::SDL2_image-static
+    SDL2_mixer::SDL2_mixer-static
     SDL2_ttf::SDL2_ttf-static
 )
 
@@ -149,6 +219,8 @@ endif()
 add_executable(
 NeonSiege
 src/main.cpp
+src/GameApplication.h
+src/GameApplication.cpp
 src/SaveData.h
 src/SaveData.cpp)
 
@@ -175,6 +247,113 @@ add_executable(
     Day7EnemyObstacleDamage
     exercises/day7_enemy_obstacle_damage.cpp
 )
+
+add_executable(
+    CommercialMapCatalog
+    exercises/commercial_map_catalog.cpp
+)
+
+add_executable(
+    CommercialAssetCatalog
+    exercises/commercial_asset_catalog.cpp
+)
+
+add_executable(
+    CommercialAudioCatalog
+    exercises/commercial_audio_catalog.cpp
+)
+
+add_executable(
+    CommercialAudioSettings
+    exercises/commercial_audio_settings.cpp
+)
+
+add_executable(
+    CommercialAudioManager
+    exercises/commercial_audio_manager.cpp
+)
+
+foreach(audio_test_target
+    CommercialAudioCatalog
+    CommercialAudioSettings
+    CommercialAudioManager)
+
+    target_link_libraries(
+        ${audio_test_target}
+        PRIVATE
+        neon_sdl
+        SDL2::SDL2-static
+    )
+
+    if(MSVC)
+        target_compile_options(
+            ${audio_test_target}
+            PRIVATE /W4 /permissive- /utf-8
+        )
+    endif()
+endforeach()
+
+add_executable(
+    CommercialUpgradeSystem
+    exercises/commercial_upgrade_system.cpp
+)
+
+target_link_libraries(
+    CommercialUpgradeSystem
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        CommercialUpgradeSystem
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    CommercialWaveDifficulty
+    exercises/commercial_wave_difficulty.cpp
+)
+
+target_link_libraries(
+    CommercialWaveDifficulty
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        CommercialWaveDifficulty
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+target_link_libraries(
+    CommercialAssetCatalog
+    PRIVATE
+    neon_sdl
+)
+
+if(MSVC)
+    target_compile_options(
+        CommercialAssetCatalog
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+target_link_libraries(
+    CommercialMapCatalog
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        CommercialMapCatalog
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
 
 target_link_libraries(
     Day7EnemyObstacleDamage
@@ -311,6 +490,25 @@ target_link_libraries(
 if(MSVC)
     target_compile_options(
         Day7PresentationEvents
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    Day7FrontendInput
+    exercises/day7_frontend_input.cpp
+)
+
+target_link_libraries(
+    Day7FrontendInput
+    PRIVATE
+    neon_sdl
+    SDL2::SDL2-static
+)
+
+if(MSVC)
+    target_compile_options(
+        Day7FrontendInput
         PRIVATE /W4 /permissive- /utf-8
     )
 endif()
@@ -965,6 +1163,7 @@ target_link_libraries(
     neon_core
     neon_sdl
     SDL2::SDL2-static
+    SDL2_image::SDL2_image-static
 )
 
 if(MSVC)
@@ -1009,6 +1208,13 @@ if(BUILD_TESTING)
     add_test(NAME AimAssistDetector COMMAND Day6AimAssistDetector)
     add_test(NAME EspDetector COMMAND Day6EspDetector)
     add_test(NAME AutoDodgeDetector COMMAND Day6AutoDodgeDetector)
+    add_test(NAME MapCatalog COMMAND CommercialMapCatalog)
+    add_test(NAME AssetCatalog COMMAND CommercialAssetCatalog)
+    add_test(NAME AudioCatalog COMMAND CommercialAudioCatalog)
+    add_test(NAME AudioSettings COMMAND CommercialAudioSettings)
+    add_test(NAME AudioManager COMMAND CommercialAudioManager)
+    add_test(NAME UpgradeSystem COMMAND CommercialUpgradeSystem)
+    add_test(NAME WaveDifficulty COMMAND CommercialWaveDifficulty)
     add_test(NAME EnemyObstacleDamage COMMAND Day7EnemyObstacleDamage)
     add_test(NAME AutoReload COMMAND Day7AutoReload)
     add_test(NAME SpawnSafety COMMAND Day7SpawnSafety)
@@ -1017,5 +1223,6 @@ if(BUILD_TESTING)
     add_test(NAME GameOverOverlay COMMAND Day7GameOverOverlay)
     add_test(NAME FrontendStates COMMAND Day7FrontendStates)
     add_test(NAME PresentationEvents COMMAND Day7PresentationEvents)
+    add_test(NAME FrontendInput COMMAND Day7FrontendInput)
     add_test(NAME NeonSiegeSmoke COMMAND NeonSiege --smoke-test)
 endif()

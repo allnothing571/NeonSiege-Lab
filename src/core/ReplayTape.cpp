@@ -9,6 +9,8 @@
 #include <string>
 #include <utility>
 
+#include "core/MapCatalog.h"
+
 namespace {
 
 	constexpr std::size_t maxReplayFrames = 1'000'000;
@@ -28,7 +30,15 @@ namespace {
 			std::isfinite(command.movement.x) &&
 			std::isfinite(command.movement.y) &&
 			std::isfinite(command.aimPosition.x) &&
-			std::isfinite(command.aimPosition.y);
+			std::isfinite(command.aimPosition.y) &&
+			command.upgradeSelection >= -1 &&
+			command.upgradeSelection < 3;
+	}
+
+	bool validMapId(
+		neon::MapId mapId) {
+		return mapId == neon::MapId::Legacy ||
+			neon::findPresetMap(mapId) != nullptr;
 	}
 
 }//namespace
@@ -53,6 +63,10 @@ namespace neon {
 		if (!std::isfinite(tape.fixedDt) ||
 			tape.fixedDt <= 0.0f) {
 			return fail(error, "invalid fixed dt");
+		}
+
+		if (!validMapId(tape.mapId)) {
+			return fail(error, "invalid replay map");
 		}
 
 		if (tape.frames.size() > maxReplayFrames) {
@@ -82,6 +96,11 @@ namespace neon {
 		output
 			<< "SEED "
 			<< tape.randomSeed
+			<< '\n';
+
+		output
+			<< "MAP "
+			<< static_cast<std::uint32_t>(tape.mapId)
 			<< '\n';
 
 		output
@@ -118,6 +137,8 @@ namespace neon {
 				<< static_cast<int>(frame.command.pausePressed)
 				<< ' '
 				<< static_cast<int>(frame.command.restartPressed)
+				<< ' '
+				<< frame.command.upgradeSelection
 				<< '\n';
 		}
 
@@ -146,7 +167,10 @@ namespace neon {
 			return fail(error, "invalid replay header");
 		}
 
-		if (candidate.version != ReplayTape::currentVersion) {
+		if (candidate.version <
+				ReplayTape::minimumSupportedVersion ||
+			candidate.version >
+				ReplayTape::currentVersion) {
 			return fail(error, "unsupported replay version");
 		}
 
@@ -154,6 +178,21 @@ namespace neon {
 			label != "SEED" ||
 			!(input >> candidate.randomSeed)) {
 			return fail(error, "invalid replay seed");
+		}
+
+		if (candidate.version >= 2u) {
+			std::uint32_t mapValue = 0u;
+			if (!(input >> label) ||
+				label != "MAP" ||
+				!(input >> mapValue)) {
+				return fail(error, "invalid replay map");
+			}
+
+			candidate.mapId =
+				static_cast<MapId>(mapValue);
+			if (!validMapId(candidate.mapId)) {
+				return fail(error, "unknown replay map");
+			}
 		}
 
 		if (!(input >> label) ||
@@ -195,6 +234,7 @@ namespace neon {
 			int reloadPressed = 0;
 			int pausePressed = 0;
 			int restartPressed = 0;
+			int upgradeSelection = -1;
 
 			if (!(input >> label) ||
 				label != "FRAME" ||
@@ -211,6 +251,14 @@ namespace neon {
 				return fail(error, "invalid replay frame");
 			}
 
+			if (candidate.version >= 3u &&
+				!(input >> upgradeSelection)) {
+				return fail(
+					error,
+					"invalid replay upgrade selection"
+				);
+			}
+
 			if (frame.tick == 0 ||
 				frame.tick <= previousTick) {
 				return fail(error, "replay ticks are not increasing");
@@ -219,7 +267,9 @@ namespace neon {
 			if (fireHeld < 0 || fireHeld > 1 ||
 				reloadPressed < 0 || reloadPressed > 1 ||
 				pausePressed < 0 || pausePressed > 1 ||
-				restartPressed < 0 || restartPressed > 1) {
+				restartPressed < 0 || restartPressed > 1 ||
+				upgradeSelection < -1 ||
+				upgradeSelection >= 3) {
 				return fail(error, "invalid replay command flag");
 			}
 
@@ -234,6 +284,9 @@ namespace neon {
 
 			frame.command.restartPressed =
 				restartPressed != 0;
+
+			frame.command.upgradeSelection =
+				upgradeSelection;
 
 			if (!finiteCommand(frame.command)) {
 				return fail(error, "replay command contains neon-finite data");

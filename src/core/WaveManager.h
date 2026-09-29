@@ -8,6 +8,7 @@
 #include "core/GameplayConfig.h"
 #include "core/Obstacle.h"
 #include "core/SpawnPlacement.h"
+#include "core/WaveDifficulty.h"
 
 namespace neon {
 
@@ -79,8 +80,12 @@ namespace neon {
 
 				const int health =
 					kind == EnemyKind::Shooter
-					? config.shooterHealth
-					: config.enemyHealth;
+					? scaledEnemyHealth(
+						config.shooterHealth,
+						nextWave)
+					: scaledEnemyHealth(
+						config.enemyHealth,
+						nextWave);
 
 				enemies.emplace_back(
 					*position,

@@ -12,7 +12,15 @@ namespace neon {
 		PlayerDamaged,
 		EnemyDamaged,
 		ProjectileHit,
-		EnemyDied
+		EnemyDied,
+		PlayerShot,
+		EnemyShot,
+		ReloadStarted,
+		ReloadCompleted,
+		WaveStarted,
+		UpgradeSelected,
+		Victory,
+		GameOver
 	};
 
 	struct PresentationEvent

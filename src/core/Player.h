@@ -19,7 +19,8 @@ namespace neon {
 			position_(position),
 			size_(size),
 			speed_(speed),
-			health_(health),
+			health_(std::max(0, health)),
+			maxHealth_(std::max(0, health)),
 			invulnerabilityDuration_(
 				std::max(0.0f, invulnerabilityDuration)),
 			invulnerabilityRemaining_(0.0f)
@@ -28,6 +29,48 @@ namespace neon {
 
 		void update(
 			Vec2 direction,
+			float dt,
+			const Rect& worldBounds) {
+			const float minX = worldBounds.x;
+			const float maxX =
+				worldBounds.x + worldBounds.w - size_;
+			const float minY = worldBounds.y;
+			const float maxY =
+				worldBounds.y + worldBounds.h - size_;
+
+			if (position_.x <= minX && direction.x < 0.0f) {
+				direction.x = 0.0f;
+			}
+			if (position_.x >= maxX && direction.x > 0.0f) {
+				direction.x = 0.0f;
+			}
+			if (position_.y <= minY && direction.y < 0.0f) {
+				direction.y = 0.0f;
+			}
+			if (position_.y >= maxY && direction.y > 0.0f) {
+				direction.y = 0.0f;
+			}
+
+			const float directionLength =
+				std::sqrt(direction.x * direction.x + direction.y * direction.y);
+
+			if (directionLength > 0.0f) {
+				direction.x /= directionLength;
+				direction.y /= directionLength;
+			}
+
+			updateResolvedMovement(
+				Vec2{
+					direction.x * speed_ * dt,
+					direction.y * speed_ * dt
+				},
+				dt,
+				worldBounds
+			);
+		}
+
+		void updateResolvedMovement(
+			Vec2 displacement,
 			float dt,
 			const Rect& worldBounds) {
 
@@ -41,33 +84,11 @@ namespace neon {
 
 			const float minX = worldBounds.x;
 			const float maxX = worldBounds.x + worldBounds.w - size_;
-
 			const float minY = worldBounds.y;
 			const float maxY = worldBounds.y + worldBounds.h - size_;
 
-			if (position_.x <= minX && direction.x < 0) {
-				direction.x = 0.0f;
-			}
-			if (position_.x >= maxX && direction.x > 0) {
-				direction.x = 0.0f;
-			}
-			if (position_.y <= minY && direction.y < 0) {
-				direction.y = 0.0f;
-			}
-			if (position_.y >= maxY && direction.y > 0) {
-				direction.y = 0.0f;
-			}
-
-			const float directionLength =
-				std::sqrt(direction.x * direction.x + direction.y * direction.y);
-
-			if (directionLength > 0.0f) {
-				direction.x /= directionLength;
-				direction.y /= directionLength;
-			}
-
-			position_.x += direction.x * speed_ * dt;
-			position_.y += direction.y * speed_ * dt;
+			position_.x += displacement.x;
+			position_.y += displacement.y;
 
 			position_.x = std::clamp(position_.x, minX, maxX);
 			position_.y = std::clamp(position_.y, minY, maxY);
@@ -87,6 +108,17 @@ namespace neon {
 
 		Rect hitbox() const {
 			const float inset = size_ * 0.2f;
+
+			return Rect{
+				position_.x + inset,
+				position_.y + inset,
+				size_ - inset * 2.0f,
+				size_ - inset * 2.0f
+			};
+		}
+
+		Rect movementHitbox() const {
+			const float inset = size_ * 0.125f;
 
 			return Rect{
 				position_.x + inset,
@@ -120,12 +152,25 @@ namespace neon {
 
 		void reset(Vec2 position, int health) {
 			position_ = position;
-			health_ = health;
+			maxHealth_ = std::max(0, health);
+			health_ = maxHealth_;
 			invulnerabilityRemaining_ = 0.0f;
+		}
+
+		void increaseMaximumHealth(int amount) {
+			if (amount <= 0) {
+				return;
+			}
+			maxHealth_ += amount;
+			health_ = std::min(maxHealth_, health_ + amount);
 		}
 
 		int health() const {
 			return health_;
+		}
+
+		int maxHealth() const {
+			return maxHealth_;
 		}
 
 	private:
@@ -133,6 +178,7 @@ namespace neon {
 		float size_;
 		float speed_;
 		int health_;
+		int maxHealth_;
 		float invulnerabilityDuration_;
 		float invulnerabilityRemaining_;
 		EntityId id_;

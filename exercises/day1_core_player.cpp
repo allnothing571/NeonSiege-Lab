@@ -21,6 +21,8 @@ int main() {
 	);
 
 	neon::Rect bounds = player.bounds();
+	const neon::Rect movementHitbox =
+		player.movementHitbox();
 	neon::Vec2 center = player.center();
 
 	const bool movementPassed =
@@ -28,6 +30,11 @@ int main() {
 		nearlyEqual(bounds.y, 70.0f) &&
 		nearlyEqual(center.x, 180.0f) &&
 		nearlyEqual(center.y, 80.0f);
+	const bool movementHitboxPassed =
+		nearlyEqual(movementHitbox.x, 172.5f) &&
+		nearlyEqual(movementHitbox.y, 72.5f) &&
+		nearlyEqual(movementHitbox.w, 15.0f) &&
+		nearlyEqual(movementHitbox.h, 15.0f);
 
 	std::cout << "bounds().x: " << bounds.x << ' ' << "bounds().y: " << bounds.y << '\n';
 	std::cout << "center().x: " << center.x << ' ' << "center().y: " << center.y << '\n';
@@ -77,12 +84,26 @@ int main() {
 		nearlyEqual(bounds.x, 280.0f) &&
 		nearlyEqual(bounds.y, 130.0f);
 
+	player.reset({ 120.0f, 70.0f }, 3);
+	player.updateResolvedMovement(
+		{ 0.0f, 25.0f },
+		0.25f,
+		worldBounds
+	);
+	const neon::Rect resolvedBounds =
+		player.bounds();
+	const bool resolvedMovementPassed =
+		nearlyEqual(resolvedBounds.x, 120.0f) &&
+		nearlyEqual(resolvedBounds.y, 95.0f);
+
 	const bool passed =
 		movementPassed &&
+		movementHitboxPassed &&
 		damagePassed &&
 		resetPassed &&
 		edgeMovementPassed &&
-		boundaryPassed;
+		boundaryPassed &&
+		resolvedMovementPassed;
 
 	return passed ? 0 : 1;
 }

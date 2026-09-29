@@ -24,7 +24,9 @@ namespace {
 			}
 
 			simulation.step(command, fixedDt);
-			if (simulation.state() == neon::GameState::Intermission) {
+			if (simulation.state() == neon::GameState::Intermission ||
+				simulation.state() ==
+					neon::GameState::UpgradeSelection) {
 				return true;
 			}
 		}
@@ -109,6 +111,14 @@ int main() {
 
 		if (simulation.state() == neon::GameState::Intermission) {
 			simulation.step(neon::InputCommand{}, fixedDt);
+			continue;
+		}
+
+		if (simulation.state() ==
+			neon::GameState::UpgradeSelection) {
+			neon::InputCommand upgradeCommand{};
+			upgradeCommand.upgradeSelection = 1;
+			simulation.step(upgradeCommand, fixedDt);
 			continue;
 		}
 

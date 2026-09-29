@@ -1,11 +1,14 @@
 #pragma once
 
+#include <array>
 #include <vector>
 
 #include "core/GameState.h"
 #include "core/Types.h"
 #include "core/EnemyKind.h"
 #include "core/ProjectileFaction.h"
+#include "core/MapDefinition.h"
+#include "core/UpgradeSystem.h"
 
 namespace neon {
 
@@ -44,9 +47,17 @@ namespace neon {
 		Rect bounds{};
 	};
 
+	struct UpgradeOptionSnapshot {
+		UpgradeType type = UpgradeType::Count;
+		int currentLevel = 0;
+		int maximumLevel = 0;
+		UpgradeStats nextStats{};
+	};
+
 	struct GameSnapshot
 	{
 		GameState state = GameState::Playing;
+		MapId mapId = MapId::Legacy;
 
 		PlayerSnapshot player{};
 		std::vector<EnemySnapshot> enemies{};
@@ -59,6 +70,9 @@ namespace neon {
 		int currentWave = 0;
 		int maximumWaves = 1;
 		float intermissionRemaining = 0.0f;
+		UpgradeStats upgradeStats{};
+		std::array<UpgradeOptionSnapshot, 3> upgradeOptions{};
+		int upgradeOptionCount = 0;
 	};
 
 }//namespace neon

@@ -5,16 +5,19 @@
 #include <string>
 #include <vector>
 
+#include "core/MapDefinition.h"
 #include "core/ReplayFrame.h"
 
 namespace neon {
 
 	struct ReplayTape
 	{
-		static constexpr std::uint32_t currentVersion = 1u;
+		static constexpr std::uint32_t minimumSupportedVersion = 1u;
+		static constexpr std::uint32_t currentVersion = 3u;
 
 		std::uint32_t version = currentVersion;
 		std::uint32_t randomSeed = 0u;
+		MapId mapId = MapId::Legacy;
 		float fixedDt = 0.0f;
 		std::vector<ReplayFrame> frames{};
 	};
