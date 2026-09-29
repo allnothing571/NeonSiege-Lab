@@ -392,6 +392,13 @@ namespace neon {
 
 						recordEvent(event);
 
+						PresentationEvent presentationEvent{};
+						presentationEvent.type =
+							PresentationEventType::EnemyShot;
+						presentationEvent.sourceId = enemy.id();
+						presentationEvent.position = enemyCenter;
+						recordPresentationEvent(presentationEvent);
+
 						++activeEnemyProjectileCount;
 					}
 				}
@@ -746,6 +753,13 @@ namespace neon {
 				static_cast<int>(state_);
 
 			recordEvent(event);
+
+			PresentationEvent presentationEvent{};
+			presentationEvent.type =
+				PresentationEventType::GameOver;
+			presentationEvent.sourceId = player_.id();
+			presentationEvent.position = player_.center();
+			recordPresentationEvent(presentationEvent);
 		}
 
 		enemies_.erase(
@@ -780,6 +794,13 @@ namespace neon {
 				stateEvent.value =
 					static_cast<int>(state_);
 				recordEvent(stateEvent);
+
+				PresentationEvent presentationEvent{};
+				presentationEvent.type =
+					PresentationEventType::Victory;
+				presentationEvent.sourceId = player_.id();
+				presentationEvent.position = player_.center();
+				recordPresentationEvent(presentationEvent);
 			}
 			else if (
 				waveManager_.currentWave() % 2 == 0) {
@@ -876,6 +897,13 @@ namespace neon {
 						playerCenter;
 
 					recordEvent(event);
+
+					PresentationEvent presentationEvent{};
+					presentationEvent.type =
+						PresentationEventType::PlayerShot;
+					presentationEvent.sourceId = player_.id();
+					presentationEvent.position = playerCenter;
+					recordPresentationEvent(presentationEvent);
 
 					if (weapon_.reloadStartedThisUpdate()) {
 						recordReloadStarted(
@@ -1027,6 +1055,16 @@ namespace neon {
 			player_.center();
 
 		recordEvent(event);
+
+		if (weapon_.reloadDuration() > 0.0f) {
+			PresentationEvent presentationEvent{};
+			presentationEvent.type =
+				PresentationEventType::ReloadStarted;
+			presentationEvent.sourceId = player_.id();
+			presentationEvent.value = ammoBeforeReload;
+			presentationEvent.position = player_.center();
+			recordPresentationEvent(presentationEvent);
+		}
 	}
 
 	void Simulation::recordReloadCompleted() {
@@ -1043,6 +1081,14 @@ namespace neon {
 			player_.center();
 
 		recordEvent(event);
+
+		PresentationEvent presentationEvent{};
+		presentationEvent.type =
+			PresentationEventType::ReloadCompleted;
+		presentationEvent.sourceId = player_.id();
+		presentationEvent.value = weapon_.ammoInMagazine();
+		presentationEvent.position = player_.center();
+		recordPresentationEvent(presentationEvent);
 	}
 
 	void Simulation::recordPresentationEvent(
@@ -1133,6 +1179,17 @@ namespace neon {
 			player_.center();
 		recordEvent(selectedEvent);
 
+		PresentationEvent presentationEvent{};
+		presentationEvent.type =
+			PresentationEventType::UpgradeSelected;
+		presentationEvent.sourceId = player_.id();
+		presentationEvent.targetId =
+			static_cast<EntityId>(optionIndex + 1);
+		presentationEvent.value =
+			static_cast<int>(selectedType);
+		presentationEvent.position = player_.center();
+		recordPresentationEvent(presentationEvent);
+
 		beginIntermission();
 		return true;
 	}
@@ -1178,6 +1235,13 @@ namespace neon {
 		event.value =
 			waveManager_.currentWave();
 		recordEvent(event);
+
+		PresentationEvent presentationEvent{};
+		presentationEvent.type =
+			PresentationEventType::WaveStarted;
+		presentationEvent.value =
+			waveManager_.currentWave();
+		recordPresentationEvent(presentationEvent);
 		return true;
 	}
 

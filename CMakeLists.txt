@@ -47,6 +47,21 @@ set(SDL2IMAGE_WEBP OFF CACHE BOOL "" FORCE)
 set(SDL2IMAGE_XCF OFF CACHE BOOL "" FORCE)
 set(SDL2IMAGE_XPM OFF CACHE BOOL "" FORCE)
 set(SDL2IMAGE_XV OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_INSTALL OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_SAMPLES OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_DEPS_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_VENDORED OFF CACHE BOOL "" FORCE)
+
+set(SDL2MIXER_CMD OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_FLAC OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_GME OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_MOD OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_MP3 OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_MIDI OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_OPUS OFF CACHE BOOL "" FORCE)
+set(SDL2MIXER_VORBIS "" CACHE STRING "" FORCE)
+set(SDL2MIXER_WAVE ON CACHE BOOL "" FORCE)
+set(SDL2MIXER_WAVPACK OFF CACHE BOOL "" FORCE)
 
 FetchContent_Declare(
     SDL2
@@ -63,6 +78,14 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(SDL2_image)
+
+FetchContent_Declare(
+    SDL2_mixer
+    GIT_REPOSITORY https://github.com/libsdl-org/SDL_mixer.git
+    GIT_TAG release-2.8.2
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(SDL2_mixer)
 
 FetchContent_Declare(
     SDL2_ttf
@@ -160,6 +183,10 @@ add_library(
     src/sdl/AssetManager.cpp
     src/sdl/SdlAssetCatalog.h
     src/sdl/SdlAssetCatalog.cpp
+    src/sdl/SdlAudioCatalog.h
+    src/sdl/SdlAudioCatalog.cpp
+    src/sdl/SdlAudioManager.h
+    src/sdl/SdlAudioManager.cpp
     src/sdl/SdlTextRenderer.h
     src/sdl/SdlTextRenderer.cpp
     src/sdl/SdlPresentationEffects.h
@@ -178,6 +205,7 @@ target_link_libraries(
     PRIVATE
     SDL2::SDL2-static
     SDL2_image::SDL2_image-static
+    SDL2_mixer::SDL2_mixer-static
     SDL2_ttf::SDL2_ttf-static
 )
 
@@ -229,6 +257,41 @@ add_executable(
     CommercialAssetCatalog
     exercises/commercial_asset_catalog.cpp
 )
+
+add_executable(
+    CommercialAudioCatalog
+    exercises/commercial_audio_catalog.cpp
+)
+
+add_executable(
+    CommercialAudioSettings
+    exercises/commercial_audio_settings.cpp
+)
+
+add_executable(
+    CommercialAudioManager
+    exercises/commercial_audio_manager.cpp
+)
+
+foreach(audio_test_target
+    CommercialAudioCatalog
+    CommercialAudioSettings
+    CommercialAudioManager)
+
+    target_link_libraries(
+        ${audio_test_target}
+        PRIVATE
+        neon_sdl
+        SDL2::SDL2-static
+    )
+
+    if(MSVC)
+        target_compile_options(
+            ${audio_test_target}
+            PRIVATE /W4 /permissive- /utf-8
+        )
+    endif()
+endforeach()
 
 add_executable(
     CommercialUpgradeSystem
@@ -1147,6 +1210,9 @@ if(BUILD_TESTING)
     add_test(NAME AutoDodgeDetector COMMAND Day6AutoDodgeDetector)
     add_test(NAME MapCatalog COMMAND CommercialMapCatalog)
     add_test(NAME AssetCatalog COMMAND CommercialAssetCatalog)
+    add_test(NAME AudioCatalog COMMAND CommercialAudioCatalog)
+    add_test(NAME AudioSettings COMMAND CommercialAudioSettings)
+    add_test(NAME AudioManager COMMAND CommercialAudioManager)
     add_test(NAME UpgradeSystem COMMAND CommercialUpgradeSystem)
     add_test(NAME WaveDifficulty COMMAND CommercialWaveDifficulty)
     add_test(NAME EnemyObstacleDamage COMMAND Day7EnemyObstacleDamage)

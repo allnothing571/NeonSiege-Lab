@@ -26,6 +26,8 @@ namespace neon::sdl {
 		UiLanguage language = UiLanguage::Chinese;
 		int windowSizeIndex = 1;
 		WindowMode windowMode = WindowMode::Windowed;
+		int masterVolume = 80;
+		int effectsVolume = 100;
 	};
 
 	const std::array<WindowSizePreset, 4>&

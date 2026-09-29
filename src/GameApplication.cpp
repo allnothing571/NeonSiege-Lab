@@ -20,6 +20,8 @@
 #include "sdl/AssetManager.h"
 #include "sdl/SdlAssetCatalog.h"
 #include "sdl/SdlAppSettings.h"
+#include "sdl/SdlAudioCatalog.h"
+#include "sdl/SdlAudioManager.h"
 #include "sdl/SdlGameRenderer.h"
 #include "sdl/SdlInput.h"
 #include "sdl/SdlPaths.h"
@@ -71,6 +73,20 @@ namespace {
 					neon::sdl::WindowMode::Windowed
 				? neon::sdl::WindowMode::BorderlessFullscreen
 				: neon::sdl::WindowMode::Windowed;
+		}
+		else if (selectedItem == 3) {
+			settings.masterVolume = std::clamp(
+				settings.masterVolume + delta * 10,
+				0,
+				100
+			);
+		}
+		else if (selectedItem == 4) {
+			settings.effectsVolume = std::clamp(
+				settings.effectsVolume + delta * 10,
+				0,
+				100
+			);
 		}
 	}
 
@@ -169,6 +185,23 @@ int runNeonSiege(
 			<< issue.relativePath
 			<< " (" << issue.message << ")\n";
 	}
+
+	neon::sdl::SdlAudioManager audioManager{};
+	audioManager.setVolumes(
+		settings.masterVolume,
+		settings.effectsVolume
+	);
+	if (!smokeTest && audioManager.initialize()) {
+		const neon::sdl::AudioLoadReport audioLoadReport =
+			audioManager.loadAssets();
+		for (const neon::sdl::AudioLoadIssue& issue :
+			audioLoadReport.issues) {
+
+			std::cerr << "音效加载失败，继续静音运行: "
+				<< issue.relativePath
+				<< " (" << issue.message << ")\n";
+		}
+	}
 	neon::sdl::SdlGameRenderer gameRenderer(
 		renderer,
 		assetManager
@@ -213,6 +246,7 @@ int runNeonSiege(
 		: 0;
 
 	auto returnToMainMenu = [&]() {
+		audioManager.stopAll();
 		screen = AppScreen::MainMenu;
 		mainMenuSelection = 0;
 		pendingReloadPressed = false;
@@ -228,6 +262,7 @@ int runNeonSiege(
 	};
 
 	auto startGame = [&]() {
+		audioManager.stopAll();
 		const neon::MapId selectedMap =
 			neon::chooseRandomPresetMap(
 				mapSelectionEngine,
@@ -239,7 +274,11 @@ int runNeonSiege(
 		else {
 			simulation.reset();
 		}
-		simulation.consumePresentationEvents();
+		const auto initialPresentationEvents =
+			simulation.consumePresentationEvents();
+		audioManager.processPresentationEvents(
+			initialPresentationEvents
+		);
 		gameRenderer.resetPresentationEffects();
 		pendingReloadPressed = false;
 		upgradeSelection = 1;
@@ -275,6 +314,7 @@ int runNeonSiege(
 			sdlInput.consumeUiCommand();
 
 		if (screen == AppScreen::MainMenu) {
+			const int previousSelection = mainMenuSelection;
 			if (uiCommand.pointerMoved) {
 				const int hoveredItem = gameRenderer.mainMenuItemAt(
 					uiCommand.pointerX,
@@ -304,21 +344,28 @@ int runNeonSiege(
 					activate = true;
 				}
 			}
+			if (mainMenuSelection != previousSelection) {
+				audioManager.play(neon::sdl::SoundId::UiSelect);
+			}
 
 			if (activate) {
 				if (mainMenuSelection == 0) {
 					startGame();
+					audioManager.play(neon::sdl::SoundId::UiConfirm);
 				}
 				else if (mainMenuSelection == 1) {
+					audioManager.play(neon::sdl::SoundId::UiConfirm);
 					howToPlayBackHovered = false;
 					screen = AppScreen::HowToPlay;
 				}
 				else if (mainMenuSelection == 2) {
+					audioManager.play(neon::sdl::SoundId::UiConfirm);
 					pendingSettings = settings;
 					settingsSelection = 0;
 					screen = AppScreen::Settings;
 				}
 				else {
+					audioManager.play(neon::sdl::SoundId::UiConfirm);
 					running = false;
 				}
 			}
@@ -330,12 +377,16 @@ int runNeonSiege(
 		}
 
 		if (screen == AppScreen::HowToPlay) {
+			const bool wasBackHovered = howToPlayBackHovered;
 			if (uiCommand.pointerMoved) {
 				howToPlayBackHovered =
 					gameRenderer.howToPlayBackAt(
 						uiCommand.pointerX,
 						uiCommand.pointerY
 					);
+			}
+			if (!wasBackHovered && howToPlayBackHovered) {
+				audioManager.play(neon::sdl::SoundId::UiSelect);
 			}
 
 			if (uiCommand.backPressed ||
@@ -344,6 +395,7 @@ int runNeonSiege(
 					gameRenderer.howToPlayBackAt(
 						uiCommand.pointerX,
 						uiCommand.pointerY))) {
+				audioManager.play(neon::sdl::SoundId::UiBack);
 				screen = AppScreen::MainMenu;
 				gameRenderer.renderMainMenu(mainMenuSelection);
 			}
@@ -358,12 +410,18 @@ int runNeonSiege(
 		if (screen == AppScreen::Settings) {
 			if (uiCommand.backPressed) {
 				pendingSettings = settings;
+				audioManager.setVolumes(
+					settings.masterVolume,
+					settings.effectsVolume
+				);
+				audioManager.play(neon::sdl::SoundId::UiBack);
 				gameRenderer.setLanguage(settings.language);
 				screen = AppScreen::MainMenu;
 				gameRenderer.renderMainMenu(mainMenuSelection);
 				continue;
 			}
 
+			const int previousSelection = settingsSelection;
 			if (uiCommand.pointerMoved) {
 				const int hoveredItem = gameRenderer.settingsItemAt(
 					uiCommand.pointerX,
@@ -374,14 +432,22 @@ int runNeonSiege(
 				}
 			}
 
-			if (uiCommand.upPressed) {
-				settingsSelection =
-					wrappedSelection(settingsSelection, -1, 5);
-			}
 			if (uiCommand.downPressed) {
 				settingsSelection =
-					wrappedSelection(settingsSelection, 1, 5);
+					wrappedSelection(settingsSelection, 1, 7);
 			}
+			if (uiCommand.upPressed) {
+				settingsSelection =
+					wrappedSelection(settingsSelection, -1, 7);
+			}
+			if (settingsSelection != previousSelection) {
+				audioManager.play(neon::sdl::SoundId::UiSelect);
+			}
+
+			const int previousMasterVolume =
+				pendingSettings.masterVolume;
+			const int previousEffectsVolume =
+				pendingSettings.effectsVolume;
 			if (uiCommand.leftPressed) {
 				adjustSettingsValue(
 					pendingSettings,
@@ -396,6 +462,17 @@ int runNeonSiege(
 					1
 				);
 			}
+			if (pendingSettings.masterVolume !=
+					previousMasterVolume ||
+				pendingSettings.effectsVolume !=
+					previousEffectsVolume) {
+
+				audioManager.setVolumes(
+					pendingSettings.masterVolume,
+					pendingSettings.effectsVolume
+				);
+				audioManager.play(neon::sdl::SoundId::UiConfirm);
+			}
 
 			bool activate = uiCommand.confirmPressed;
 			if (uiCommand.pointerPressed) {
@@ -409,15 +486,35 @@ int runNeonSiege(
 				}
 			}
 
-			if (activate && settingsSelection < 3) {
+			if (activate && settingsSelection < 5) {
+				const int masterBeforeActivation =
+					pendingSettings.masterVolume;
+				const int effectsBeforeActivation =
+					pendingSettings.effectsVolume;
 				adjustSettingsValue(
 					pendingSettings,
 					settingsSelection,
 					1
 				);
+				if (pendingSettings.masterVolume !=
+						masterBeforeActivation ||
+					pendingSettings.effectsVolume !=
+						effectsBeforeActivation) {
+
+					audioManager.setVolumes(
+						pendingSettings.masterVolume,
+						pendingSettings.effectsVolume
+					);
+				}
+				audioManager.play(neon::sdl::SoundId::UiConfirm);
 			}
-			else if (activate && settingsSelection == 3) {
+			else if (activate && settingsSelection == 5) {
 				settings = pendingSettings;
+				audioManager.setVolumes(
+					settings.masterVolume,
+					settings.effectsVolume
+				);
+				audioManager.play(neon::sdl::SoundId::UiConfirm);
 				gameRenderer.setLanguage(settings.language);
 				if (!neon::sdl::applyAppSettings(window, settings)) {
 					std::cerr << "无法应用窗口设置: "
@@ -433,8 +530,13 @@ int runNeonSiege(
 				gameRenderer.renderMainMenu(mainMenuSelection);
 				continue;
 			}
-			else if (activate && settingsSelection == 4) {
+			else if (activate && settingsSelection == 6) {
 				pendingSettings = settings;
+				audioManager.setVolumes(
+					settings.masterVolume,
+					settings.effectsVolume
+				);
+				audioManager.play(neon::sdl::SoundId::UiBack);
 				gameRenderer.setLanguage(settings.language);
 				screen = AppScreen::MainMenu;
 				gameRenderer.renderMainMenu(mainMenuSelection);
@@ -456,6 +558,11 @@ int runNeonSiege(
 			(isTerminalState(stateBeforeInput) &&
 				uiCommand.backPressed)) {
 			returnToMainMenu();
+			audioManager.play(
+				stateBeforeInput == neon::GameState::Paused
+				? neon::sdl::SoundId::UiConfirm
+				: neon::sdl::SoundId::UiBack
+			);
 			gameRenderer.renderMainMenu(mainMenuSelection);
 			continue;
 		}
@@ -478,6 +585,8 @@ int runNeonSiege(
 				upgradeInputArmed = false;
 				upgradePointerPressedOption = -1;
 			}
+			const int previousUpgradeSelection =
+				upgradeSelection;
 
 			if (upgradeInputLockRemaining > 0.0) {
 				upgradeInputLockRemaining = std::max(
@@ -554,6 +663,9 @@ int runNeonSiege(
 				}
 				upgradePointerPressedOption = -1;
 			}
+			if (upgradeSelection != previousUpgradeSelection) {
+				audioManager.play(neon::sdl::SoundId::UiSelect);
+			}
 
 			if (confirmUpgrade) {
 				command.upgradeSelection =
@@ -621,6 +733,9 @@ int runNeonSiege(
 			simulation.snapshot();
 		const auto presentationEvents =
 			simulation.consumePresentationEvents();
+		audioManager.processPresentationEvents(
+			presentationEvents
+		);
 
 		if (isTerminalState(snapshot.state) &&
 			snapshot.score > highScore) {
@@ -666,6 +781,7 @@ int runNeonSiege(
 		std::cerr << "无法保存最高分\n";
 	}
 
+	audioManager.shutdown();
 	assetManager.clear();
 	IMG_Quit();
 	SDL_DestroyRenderer(renderer);

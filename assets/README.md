@@ -26,3 +26,30 @@ colored-rectangle fallback. Missing visual assets must never prevent the core
 game from starting.
 
 See `ASSET_SOURCES.md` for provenance.
+
+## Audio layout
+
+All fourteen catalog slots are populated:
+
+- `audio/ui/select.wav`
+- `audio/ui/confirm.wav`
+- `audio/ui/back.wav`
+- `audio/combat/player_shot.wav`
+- `audio/combat/enemy_shot.wav`
+- `audio/combat/projectile_hit.wav`
+- `audio/combat/player_damaged.wav`
+- `audio/combat/enemy_died.wav`
+- `audio/combat/reload_start.wav`
+- `audio/combat/reload_complete.wav`
+- `audio/system/wave_start.wav`
+- `audio/system/upgrade_selected.wav`
+- `audio/system/victory.wav`
+- `audio/system/game_over.wav`
+
+Audio assets use PCM WAV at 44.1 kHz, 16-bit, stereo. All fourteen original
+synthesized files are produced by
+`tools/generate_audio_assets.py`; do not hand-edit them, re-run the generator
+instead, and check the result with `python tools/audio_verify.py`. Missing or
+invalid audio is non-fatal: the game logs the problem and continues without
+that sound. Every production audio file must have its source and commercial-use
+terms recorded in `ASSET_SOURCES.md` before distribution.

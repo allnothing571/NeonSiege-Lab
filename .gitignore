@@ -5,3 +5,8 @@
 *.suo
 *.VC.db
 
+# Python tooling used to generate and check the original audio assets.
+__pycache__/
+*.pyc
+
+/debug.log

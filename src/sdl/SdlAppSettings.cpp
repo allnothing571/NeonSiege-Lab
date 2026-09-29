@@ -17,6 +17,16 @@ namespace neon::sdl {
 				0,
 				static_cast<int>(windowSizePresets().size()) - 1
 			);
+			settings.masterVolume = std::clamp(
+				settings.masterVolume,
+				0,
+				100
+			);
+			settings.effectsVolume = std::clamp(
+				settings.effectsVolume,
+				0,
+				100
+			);
 			return settings;
 		}
 
@@ -55,6 +65,15 @@ namespace neon::sdl {
 		settings.windowMode = windowMode == 1
 			? WindowMode::BorderlessFullscreen
 			: WindowMode::Windowed;
+
+		int masterVolume = settings.masterVolume;
+		int effectsVolume = settings.effectsVolume;
+		if (input >> masterVolume) {
+			settings.masterVolume = masterVolume;
+			if (input >> effectsVolume) {
+				settings.effectsVolume = effectsVolume;
+			}
+		}
 		return sanitized(settings);
 	}
 
@@ -79,6 +98,10 @@ namespace neon::sdl {
 			<< ' '
 			<< (safeSettings.windowMode ==
 				WindowMode::BorderlessFullscreen ? 1 : 0)
+			<< ' '
+			<< safeSettings.masterVolume
+			<< ' '
+			<< safeSettings.effectsVolume
 			<< '\n';
 		return static_cast<bool>(output);
 	}

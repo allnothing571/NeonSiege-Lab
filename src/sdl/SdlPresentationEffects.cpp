@@ -75,6 +75,14 @@ namespace neon::sdl {
 				break;
 
 			case PresentationEventType::None:
+			case PresentationEventType::PlayerShot:
+			case PresentationEventType::EnemyShot:
+			case PresentationEventType::ReloadStarted:
+			case PresentationEventType::ReloadCompleted:
+			case PresentationEventType::WaveStarted:
+			case PresentationEventType::UpgradeSelected:
+			case PresentationEventType::Victory:
+			case PresentationEventType::GameOver:
 				break;
 			}
 		}

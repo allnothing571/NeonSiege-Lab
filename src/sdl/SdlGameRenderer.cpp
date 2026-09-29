@@ -16,6 +16,9 @@
 namespace neon::sdl {
 
 	namespace {
+		constexpr int settingsItemCount = 7;
+		constexpr int settingsFirstItemY = 145;
+		constexpr int settingsItemSpacing = 72;
 
 		struct CanvasSize {
 			int width = 1280;
@@ -323,11 +326,11 @@ namespace neon::sdl {
 			chinese ? "设置" : "SETTINGS",
 			TextStyle::Title,
 			size.width / 2,
-			90,
+			62,
 			SDL_Color{ 255, 90, 150, 255 }
 		);
 
-		const std::array<std::string, 5> items{
+		const std::array<std::string, settingsItemCount> items{
 			chinese
 				? "语言：" + std::string(
 					settings.language == UiLanguage::Chinese
@@ -345,14 +348,21 @@ namespace neon::sdl {
 				: "WINDOW MODE: " + std::string(
 					settings.windowMode == WindowMode::Windowed
 						? "WINDOWED" : "BORDERLESS FULLSCREEN"),
+			(chinese ? "主音量：" : "MASTER VOLUME: ") +
+				std::to_string(settings.masterVolume) + "%",
+			(chinese ? "音效音量：" : "EFFECTS VOLUME: ") +
+				std::to_string(settings.effectsVolume) + "%",
 			chinese ? "应用并返回" : "APPLY AND RETURN",
 			chinese ? "取消" : "CANCEL"
 		};
 
-		for (int index = 0; index < 5; ++index) {
+		for (int index = 0;
+			index < settingsItemCount;
+			++index) {
 			renderFrontendButton(
 				items[index],
-				205 + index * 72,
+				settingsFirstItemY +
+					index * settingsItemSpacing,
 				680,
 				selectedItem == index
 			);
@@ -391,11 +401,14 @@ namespace neon::sdl {
 	int SdlGameRenderer::settingsItemAt(
 		int x,
 		int y) const {
-		for (int index = 0; index < 5; ++index) {
+		for (int index = 0;
+			index < settingsItemCount;
+			++index) {
 			if (contains(
 				centeredButtonRect(
 					renderer_,
-					205 + index * 72,
+					settingsFirstItemY +
+						index * settingsItemSpacing,
 					680
 				),
 				x,
