@@ -115,6 +115,11 @@ target_sources(
     src/core/UpgradeType.h
     src/core/UpgradeSystem.h
     src/core/UpgradeSystem.cpp
+    src/core/RogueliteUpgradeTypes.h
+    src/core/RogueliteUpgradeCatalog.h
+    src/core/RogueliteUpgradeCatalog.cpp
+    src/core/RogueliteUpgradeSystem.h
+    src/core/RogueliteUpgradeSystem.cpp
     src/core/WaveDifficulty.h
     src/core/EnemyKind.h
     src/core/GameSnapshot.h
@@ -325,6 +330,44 @@ target_link_libraries(
 if(MSVC)
     target_compile_options(
         CommercialWaveDifficulty
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+# First slice of the roguelite growth module. The staging module is standalone,
+# so both targets link neon_core only.
+add_executable(
+    CommercialRogueliteCatalog
+    exercises/commercial_roguelite_catalog.cpp
+)
+
+target_link_libraries(
+    CommercialRogueliteCatalog
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        CommercialRogueliteCatalog
+        PRIVATE /W4 /permissive- /utf-8
+    )
+endif()
+
+add_executable(
+    CommercialRogueliteProgression
+    exercises/commercial_roguelite_progression.cpp
+)
+
+target_link_libraries(
+    CommercialRogueliteProgression
+    PRIVATE
+    neon_core
+)
+
+if(MSVC)
+    target_compile_options(
+        CommercialRogueliteProgression
         PRIVATE /W4 /permissive- /utf-8
     )
 endif()
@@ -1215,6 +1258,11 @@ if(BUILD_TESTING)
     add_test(NAME AudioManager COMMAND CommercialAudioManager)
     add_test(NAME UpgradeSystem COMMAND CommercialUpgradeSystem)
     add_test(NAME WaveDifficulty COMMAND CommercialWaveDifficulty)
+    add_test(NAME RogueliteCatalog COMMAND CommercialRogueliteCatalog)
+    add_test(
+        NAME RogueliteProgression
+        COMMAND CommercialRogueliteProgression
+    )
     add_test(NAME EnemyObstacleDamage COMMAND Day7EnemyObstacleDamage)
     add_test(NAME AutoReload COMMAND Day7AutoReload)
     add_test(NAME SpawnSafety COMMAND Day7SpawnSafety)
